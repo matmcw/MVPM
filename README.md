@@ -7,6 +7,7 @@ A portable desktop app that lets you record your own voice and sounds to replace
 - Browse every sound in any Minecraft Java Edition version (fetched from Mojang's official asset API)
 - Record your voice or any sound to replace individual Minecraft sounds
 - Tile grid editor with categories, search, breadcrumb navigation, and multi-select
+- In-app pack deletion with type-to-confirm safety prompt
 - Single recording mode: record once per sound event and duplicate to all variants
 - Light and dark themes
 - Fully portable -- runs from its own folder with no registry or AppData usage
@@ -90,6 +91,9 @@ MVPM/
 │   ├── app.css                      # Global styles + Tailwind 4 theme tokens
 │   ├── app.html                     # HTML shell
 │   ├── lib/
+│   │   ├── assets/
+│   │   │   ├── favicon.svg
+│   │   │   └── help.md              # Help page content (parsed at runtime)
 │   │   ├── components/              # Reusable UI components
 │   │   │   ├── Breadcrumb.svelte
 │   │   │   ├── DownloadProgress.svelte
@@ -147,6 +151,12 @@ MVPM/
 3. **Record** -- select sounds and enter the recording workflow. Hold the record key (spacebar by default) to record, release to stop. The WAV is automatically converted to OGG Vorbis and placed at the correct path in the pack.
 4. **Use the pack** -- copy your pack folder to `.minecraft/resourcepacks/`, enable it in Minecraft, and hear your recordings in-game.
 
+## Disclaimer
+
+MVPM is not affiliated with, endorsed by, or associated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios. All Minecraft assets are downloaded directly from Mojang's public CDN to the user's own machine and are not redistributed.
+
+This application bundles [ffmpeg](https://ffmpeg.org/) for audio conversion. ffmpeg is licensed under the [LGPL 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html) (or GPL, depending on build configuration). The ffmpeg source code is available at [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html). MVPM does not modify ffmpeg; it is included as a standalone binary sidecar.
+
 ## License
 
-MIT
+[MIT](LICENSE)

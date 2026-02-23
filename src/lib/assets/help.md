@@ -58,3 +58,11 @@ These are music tracks, ambient loops, and other long sounds (typically over 30 
 ## Can I change the Minecraft version of an existing pack?
 
 Yes! Go to the pack edit screen and change the version. Sounds that exist in both versions will be kept. Sounds only in the old version will be removed.
+
+# Legal
+
+MVPM is not affiliated with, endorsed by, or associated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios.
+
+This application uses ffmpeg for audio conversion, which is licensed under the LGPL 2.1.
+
+MVPM is provided as-is with no warranty. See the LICENSE file for details.
