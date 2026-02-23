@@ -26,6 +26,12 @@
 	let duplicateName = $state('');
 	let duplicateError = $state('');
 
+	// Delete
+	let showDelete = $state(false);
+	let deleteConfirmText = $state('');
+	let deleteError = $state('');
+	let deleting = $state(false);
+
 	onMount(async () => {
 		await packStore.loadPack(packId);
 		if (packStore.currentPack) {
@@ -88,6 +94,23 @@
 			goto(`/pack/${packId}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
+		}
+	}
+
+	async function confirmDelete() {
+		if (!packStore.currentPack) return;
+		if (deleteConfirmText !== packStore.currentPack.name) {
+			deleteError = 'Pack name does not match.';
+			return;
+		}
+		deleting = true;
+		try {
+			await packStore.deletePack(packId);
+			goto('/');
+		} catch (e) {
+			deleteError = e instanceof Error ? e.message : String(e);
+		} finally {
+			deleting = false;
 		}
 	}
 
@@ -210,6 +233,24 @@
 				Duplicate Pack
 			</button>
 		</div>
+
+		<!-- Delete -->
+		<div class="py-4 border-t border-[var(--border-color)]">
+			<h3 class="font-medium mb-2 text-danger">Delete Pack</h3>
+			<p class="text-sm text-[var(--text-muted)] mb-3">
+				Permanently delete this pack and all its recordings. This cannot be undone.
+			</p>
+			<button
+				onclick={() => {
+					deleteConfirmText = '';
+					deleteError = '';
+					showDelete = true;
+				}}
+				class="px-4 py-2 rounded-lg border border-danger/50 text-danger hover:bg-danger/10 transition-colors text-sm"
+			>
+				Delete Pack
+			</button>
+		</div>
 	</div>
 </div>
 
@@ -232,6 +273,47 @@
 		onclose={() => (showDownload = false)}
 		onsuccess={onDownloadSuccess}
 	/>
+{/if}
+
+<!-- Delete confirmation dialog -->
+{#if showDelete}
+	<div class="fixed inset-0 z-50 flex items-center justify-center">
+		<div class="absolute inset-0 bg-black/50" onclick={() => (showDelete = false)} role="presentation"></div>
+		<div class="relative bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+			<h3 class="text-lg font-semibold mb-2">Delete Pack</h3>
+			<p class="text-[var(--text-secondary)] mb-4">
+				This will permanently delete <strong>"{packStore.currentPack?.name}"</strong> and all its recordings. This cannot be undone.
+			</p>
+			<p class="text-sm text-[var(--text-secondary)] mb-2">
+				Type the pack name to confirm:
+			</p>
+			<input
+				type="text"
+				bind:value={deleteConfirmText}
+				class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] focus:outline-none focus:border-danger"
+				placeholder={packStore.currentPack?.name}
+				onkeydown={(e) => e.key === 'Enter' && confirmDelete()}
+			/>
+			{#if deleteError}
+				<p class="text-sm text-danger mt-2">{deleteError}</p>
+			{/if}
+			<div class="flex gap-3 justify-end mt-4">
+				<button
+					onclick={() => (showDelete = false)}
+					class="px-4 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={confirmDelete}
+					disabled={deleting || deleteConfirmText !== packStore.currentPack?.name}
+					class="px-4 py-2 rounded-lg bg-danger text-white hover:bg-danger-hover transition-colors disabled:opacity-50"
+				>
+					{deleting ? 'Deleting...' : 'Delete Pack'}
+				</button>
+			</div>
+		</div>
+	</div>
 {/if}
 
 <!-- Duplicate dialog -->

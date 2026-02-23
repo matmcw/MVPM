@@ -38,6 +38,14 @@ export const packStore = {
 		return updated;
 	},
 
+	async deletePack(packId: string) {
+		await api.deletePack(packId);
+		packs = packs.filter((p) => p.id !== packId);
+		if (currentPack?.id === packId) {
+			currentPack = null;
+		}
+	},
+
 	async duplicatePack(packId: string, newName: string) {
 		const dup = await api.duplicatePack(packId, newName);
 		packs = [...packs, dup];

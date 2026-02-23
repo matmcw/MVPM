@@ -301,6 +301,17 @@ fn collect_all_file_paths(nodes: &[SoundNode]) -> Vec<String> {
 }
 
 #[tauri::command]
+pub async fn delete_pack(pack_id: String) -> Result<(), String> {
+	let dir = pack_dir(&pack_id)?;
+	if !dir.exists() {
+		return Err("Pack not found.".to_string());
+	}
+	std::fs::remove_dir_all(&dir)
+		.map_err(|e| format!("Failed to delete pack: {}", e))?;
+	Ok(())
+}
+
+#[tauri::command]
 pub async fn get_recorded_sounds(pack_id: String) -> Result<Vec<String>, String> {
 	get_recorded_sounds_internal(&pack_id)
 }

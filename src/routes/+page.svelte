@@ -9,9 +9,37 @@
 	let duplicateName = $state('');
 	let duplicateError = $state('');
 
+	let deleteTarget = $state<PackMeta | null>(null);
+	let deleteConfirmText = $state('');
+	let deleteError = $state('');
+	let deleting = $state(false);
+
 	onMount(async () => {
 		await packStore.loadPacks();
 	});
+
+	function startDelete(pack: PackMeta) {
+		deleteTarget = pack;
+		deleteConfirmText = '';
+		deleteError = '';
+	}
+
+	async function confirmDelete() {
+		if (!deleteTarget) return;
+		if (deleteConfirmText !== deleteTarget.name) {
+			deleteError = 'Pack name does not match.';
+			return;
+		}
+		deleting = true;
+		try {
+			await packStore.deletePack(deleteTarget.id);
+			deleteTarget = null;
+		} catch (e) {
+			deleteError = e instanceof Error ? e.message : String(e);
+		} finally {
+			deleting = false;
+		}
+	}
 
 	function startDuplicate(pack: PackMeta) {
 		duplicateTarget = pack;
@@ -67,7 +95,7 @@
 	{:else}
 		<div class="space-y-3">
 			{#each packStore.packs as pack (pack.id)}
-				<PackCard {pack} onduplicate={startDuplicate} />
+				<PackCard {pack} onduplicate={startDuplicate} ondelete={startDelete} />
 			{/each}
 		</div>
 	{/if}
@@ -112,6 +140,47 @@
 					class="px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors"
 				>
 					Duplicate
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+<!-- Delete confirmation dialog -->
+{#if deleteTarget}
+	<div class="fixed inset-0 z-50 flex items-center justify-center">
+		<div class="absolute inset-0 bg-black/50" onclick={() => (deleteTarget = null)} role="presentation"></div>
+		<div class="relative bg-[var(--bg-primary)] border border-[var(--border-color)] rounded-xl shadow-lg p-6 max-w-md w-full mx-4">
+			<h3 class="text-lg font-semibold mb-2">Delete Pack</h3>
+			<p class="text-[var(--text-secondary)] mb-4">
+				This will permanently delete <strong>"{deleteTarget.name}"</strong> and all its recordings. This cannot be undone.
+			</p>
+			<p class="text-sm text-[var(--text-secondary)] mb-2">
+				Type the pack name to confirm:
+			</p>
+			<input
+				type="text"
+				bind:value={deleteConfirmText}
+				class="w-full px-3 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] focus:outline-none focus:border-danger"
+				placeholder={deleteTarget.name}
+				onkeydown={(e) => e.key === 'Enter' && confirmDelete()}
+			/>
+			{#if deleteError}
+				<p class="text-sm text-danger mt-2">{deleteError}</p>
+			{/if}
+			<div class="flex gap-3 justify-end mt-4">
+				<button
+					onclick={() => (deleteTarget = null)}
+					class="px-4 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors"
+				>
+					Cancel
+				</button>
+				<button
+					onclick={confirmDelete}
+					disabled={deleting || deleteConfirmText !== deleteTarget.name}
+					class="px-4 py-2 rounded-lg bg-danger text-white hover:bg-danger-hover transition-colors disabled:opacity-50"
+				>
+					{deleting ? 'Deleting...' : 'Delete Pack'}
 				</button>
 			</div>
 		</div>

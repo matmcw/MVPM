@@ -139,6 +139,10 @@ export async function updatePack(
 	});
 }
 
+export async function deletePack(packId: string): Promise<void> {
+	return invoke('delete_pack', { packId });
+}
+
 export async function duplicatePack(packId: string, newName: string): Promise<PackMeta> {
 	return invoke('duplicate_pack', { packId, newName });
 }

@@ -31,6 +31,7 @@ pub fn run() {
 			commands::packs::get_pack,
 			commands::packs::update_pack,
 			commands::packs::duplicate_pack,
+			commands::packs::delete_pack,
 			commands::packs::change_pack_version,
 			commands::packs::get_recorded_sounds,
 			commands::packs::get_pack_sound_path,
