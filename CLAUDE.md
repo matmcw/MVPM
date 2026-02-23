@@ -10,14 +10,16 @@ Repository: https://github.com/matmcw/MVPM.git
 
 ## Technology Stack
 - **Desktop Framework**: Tauri 2.x (Rust backend, web frontend)
-- **Frontend**: Svelte 5 + TypeScript
-- **Styling**: Tailwind CSS
+- **Frontend**: Svelte 5 + SvelteKit + TypeScript
+- **State Management**: Svelte 5 runes (`$state`, `$derived`) in `.svelte.ts` store files (not traditional Svelte stores)
+- **Styling**: Tailwind CSS 4 (via `@tailwindcss/vite` plugin; no `tailwind.config.js`; theme tokens in `app.css` using `@theme`)
 - **Audio Playback**: HTML5 Audio (plays .ogg files from Mojang CDN or local cache)
 - **Audio Recording**: Web Audio API + MediaRecorder → WAV
 - **Audio Conversion**: Bundled ffmpeg sidecar (WAV → OGG Vorbis)
 - **Sound Source**: Mojang's official asset pipeline API (Java Edition only)
 - **Packaging**: Tauri bundler → .msi/.exe (manual builds when requested, no CI/CD)
 - **Build Tool**: Vite
+- **SPA Mode**: SvelteKit static adapter with `fallback: 'index.html'`; SSR and prerender disabled in `+layout.ts`
 - **Theme**: Light (default) + dark mode toggle. Simple and modern, NOT Minecraft-inspired.
 
 ---
@@ -58,60 +60,72 @@ Only the record key (spacebar by default, configurable) is a keyboard shortcut. 
 ### Source Structure
 ```
 MVPM/
-├── src-tauri/                    # Rust backend
+├── src-tauri/                       # Rust backend
 │   ├── src/
-│   │   ├── main.rs               # Tauri entry, command registration
-│   │   ├── commands/
-│   │   │   ├── mojang.rs          # Version manifest, asset index, sound downloads
-│   │   │   ├── packs.rs           # Pack CRUD, metadata, duplication, version change
-│   │   │   ├── recording.rs       # Save WAV, invoke ffmpeg, file I/O
-│   │   │   └── settings.rs        # Read/write settings.json
-│   │   └── models.rs              # Shared types (SoundTree, Pack, Settings, etc.)
+│   │   ├── main.rs                  # Binary entry point
+│   │   ├── lib.rs                   # Tauri builder, plugin + command registration
+│   │   ├── models.rs                # Shared types (Pack, Settings, SoundNode, etc.)
+│   │   └── commands/
+│   │       ├── mod.rs               # Module declarations
+│   │       ├── mojang.rs            # Version manifest, asset index, sound downloads
+│   │       ├── packs.rs             # Pack CRUD, metadata, duplication, version change
+│   │       ├── recording.rs         # Save WAV, invoke ffmpeg, file I/O
+│   │       └── settings.rs          # Read/write settings.json
+│   ├── bin/                         # ffmpeg sidecar (gitignored — see Dev Setup)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
-├── src/                           # Svelte frontend
-│   ├── lib/
-│   │   ├── components/
-│   │   │   ├── TileGrid.svelte         # Sound/category tile grid
-│   │   │   ├── Tile.svelte             # Individual tile (sound or category)
-│   │   │   ├── RecordingWorkflow.svelte # Recording screen
-│   │   │   ├── SearchBar.svelte         # Global sound search
-│   │   │   ├── Breadcrumb.svelte        # Directory navigation breadcrumbs
-│   │   │   ├── PackCard.svelte          # Pack list item on home screen
-│   │   │   ├── DownloadProgress.svelte  # Version download progress modal
-│   │   │   ├── WarningDialog.svelte     # Reusable warning/confirmation dialog
-│   │   │   ├── HelpButton.svelte        # ? icon present on every screen
-│   │   │   └── ThemeToggle.svelte       # Light/dark mode switch
-│   │   ├── stores/
-│   │   │   ├── pack.ts            # Current pack state, recording progress
-│   │   │   ├── sounds.ts          # Sound tree for current version
-│   │   │   ├── settings.ts        # User preferences (persisted)
-│   │   │   └── versions.ts        # Cached version list, download status
-│   │   └── utils/
-│   │       ├── audio.ts           # Playback + recording helpers
-│   │       └── api.ts             # Tauri command wrappers
-│   ├── routes/
-│   │   ├── +layout.svelte         # App shell, help button, theme
-│   │   ├── +page.svelte           # Home: pack list + create button
-│   │   ├── create/
-│   │   │   ├── version/+page.svelte     # Wizard step 1: version select
-│   │   │   ├── details/+page.svelte     # Wizard step 2: name + description
-│   │   │   └── icon/+page.svelte        # Wizard step 3: optional icon
-│   │   ├── pack/[id]/
-│   │   │   ├── +page.svelte       # Pack editor: tile grid
-│   │   │   └── edit/+page.svelte  # Edit pack name/description/icon
-│   │   ├── record/+page.svelte    # Recording workflow screen
-│   │   ├── settings/+page.svelte  # Settings page
-│   │   └── help/+page.svelte      # Help/guide page
+├── src/                             # Svelte 5 frontend
+│   ├── app.css                      # Global styles + Tailwind 4 @theme tokens
 │   ├── app.html
-│   └── app.css
+│   ├── app.d.ts
+│   ├── lib/
+│   │   ├── index.ts
+│   │   ├── assets/
+│   │   │   └── favicon.svg
+│   │   ├── components/
+│   │   │   ├── Breadcrumb.svelte        # Directory navigation breadcrumbs
+│   │   │   ├── DownloadProgress.svelte  # Version download progress modal
+│   │   │   ├── HelpButton.svelte        # ? icon present on every screen
+│   │   │   ├── PackCard.svelte          # Pack list item on home screen
+│   │   │   ├── SearchBar.svelte         # Global sound search
+│   │   │   ├── ThemeToggle.svelte       # Light/dark mode switch
+│   │   │   ├── Tile.svelte             # Individual tile (sound or category)
+│   │   │   ├── TileGrid.svelte         # Sound/category tile grid
+│   │   │   └── WarningDialog.svelte     # Reusable warning/confirmation dialog
+│   │   ├── stores/                  # Svelte 5 rune-based state (.svelte.ts)
+│   │   │   ├── pack.svelte.ts       # Current pack state, recording progress
+│   │   │   ├── recording.svelte.ts  # Recording workflow state
+│   │   │   ├── settings.svelte.ts   # User preferences (persisted)
+│   │   │   ├── sounds.svelte.ts     # Sound tree for current version
+│   │   │   └── versions.svelte.ts   # Cached version list, download status
+│   │   └── utils/
+│   │       ├── api.ts               # Tauri command wrappers + shared types
+│   │       └── audio.ts             # Playback + recording helpers
+│   └── routes/
+│       ├── +layout.svelte           # App shell, help button, theme
+│       ├── +layout.ts               # SSR/prerender disabled (SPA mode)
+│       ├── +page.svelte             # Home: pack list + create button
+│       ├── create/
+│       │   ├── version/+page.svelte     # Wizard step 1: version select
+│       │   ├── details/+page.svelte     # Wizard step 2: name + description
+│       │   └── icon/+page.svelte        # Wizard step 3: optional icon
+│       ├── pack/[id]/
+│       │   ├── +page.svelte         # Pack editor: tile grid
+│       │   └── edit/+page.svelte    # Edit pack name/description/icon/version
+│       ├── record/+page.svelte      # Recording workflow screen
+│       ├── settings/+page.svelte    # Settings page
+│       └── help/+page.svelte        # Help/guide page
 ├── static/
 ├── package.json
-├── svelte.config.js
-├── vite.config.ts
-├── tailwind.config.js
+├── svelte.config.js                 # SvelteKit config (static adapter, SPA fallback)
+├── vite.config.ts                   # Vite config (Tailwind + SvelteKit plugins)
 └── tsconfig.json
 ```
+
+### Dev Setup Notes
+- `src-tauri/bin/` is **gitignored**. Developers must place a static ffmpeg build at `src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe`.
+- Tailwind CSS 4 has no config file; theme tokens are defined via `@theme` in `src/app.css`.
+- `pack_format` for `pack.mcmeta` is dynamically derived from Mojang's version JSON (downloaded with each version), with a hardcoded fallback table for edge cases.
 
 ### Portable Runtime File Structure
 ```
@@ -317,11 +331,7 @@ interface SoundNode {
   }
 }
 ```
-`pack_format` values must be mapped correctly per Minecraft version. Examples:
-- 1.21.4 → pack_format 34
-- 1.20.x → pack_format 15
-- 1.19.x → pack_format 12
-- (Full mapping table must be maintained in code)
+`pack_format` is dynamically derived from Mojang's version JSON (`resource_pack_version` field in the `compliance` section) at download time. A hardcoded fallback table in `mojang.rs` (`fallback_pack_format`) covers cases where the version JSON is unavailable.
 
 ---
 
@@ -341,11 +351,13 @@ interface SoundNode {
 
 ---
 
-## Implementation Order (Full Build in One Pass)
-1. **Scaffold**: Tauri 2 + Svelte 5 + Tailwind + Vite project setup
+## Implementation Status
+All planned features have been implemented in the initial codebase. The build order below reflects the sequence used and can guide future contributors:
+
+1. **Scaffold**: Tauri 2 + Svelte 5 + SvelteKit + Tailwind CSS 4 + Vite project setup
 2. **Rust backend**: All Tauri commands (Mojang API, pack management, file I/O, settings, ffmpeg invocation)
-3. **Data stores**: Svelte stores for versions, packs, sounds, settings
-4. **Layout + routing**: App shell with help button, theme toggle, all routes
+3. **Data stores**: Svelte 5 rune-based stores (`.svelte.ts`) for versions, packs, sounds, recording, settings
+4. **Layout + routing**: App shell with help button, theme toggle, all routes (SPA mode via static adapter)
 5. **Home screen**: Pack list, create button
 6. **Pack creation wizard**: 3-step flow with version download progress
 7. **Pack editor (tile grid)**: Full grid with categories, sounds, search, breadcrumbs, selection
@@ -356,10 +368,19 @@ interface SoundNode {
 12. **Polish**: Theme implementation (light default + dark), transitions, error handling, edge cases
 13. **Packaging config**: Tauri bundler configuration for portable .exe + ffmpeg sidecar
 
+### Development Commands
+```
+npm install                    # Install frontend dependencies
+npx @tauri-apps/cli dev        # Run in development mode (Rust + frontend hot-reload)
+npx @tauri-apps/cli build      # Build production executable with ffmpeg sidecar
+npm run build                  # Build frontend only
+npm run check                  # TypeScript/Svelte type checking
+```
+
 ---
 
 ## Verification / Testing Checklist
-1. `npm run tauri dev` launches the app successfully
+1. `npx @tauri-apps/cli dev` launches the app successfully
 2. Version list populates from Mojang API (or falls back to cache if offline)
 3. Create a new pack: complete 3-step wizard, verify pack folder + pack.mcmeta created on disk
 4. Download a version's sounds: progress bar works, all files download, retry logic works
@@ -377,4 +398,4 @@ interface SoundNode {
 16. Theme toggle switches between light and dark modes
 17. Help page accessible from every screen via ? button
 18. Pack edit: rename, change description, change icon, duplicate, version change all work
-19. `npm run tauri build` produces working portable .exe with ffmpeg sidecar
+19. `npx @tauri-apps/cli build` produces working portable .exe with ffmpeg sidecar
