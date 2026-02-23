@@ -1,17 +1,15 @@
 # MVPM -- Minecraft Voice Pack Maker
 
-A portable desktop app that lets you record your own voice and sounds to replace Minecraft Java Edition's default sounds, creating custom resource packs. Your pack is always a valid, live resource pack -- there is no export step. Just copy the pack folder to `.minecraft/resourcepacks/` and go.
+A portable desktop app that lets you record your own voice and sounds to replace Minecraft Java Edition's default sounds, creating custom resource packs using your voice.
 
 ## Features
 
-- Browse every sound in any Minecraft Java Edition version (fetched from Mojang's official asset API)
+- Browse every sound in any Minecraft Java Edition version
 - Record your voice or any sound to replace individual Minecraft sounds
 - Tile grid editor with categories, search, breadcrumb navigation, and multi-select
-- In-app pack deletion with type-to-confirm safety prompt
 - Single recording mode: record once per sound event and duplicate to all variants
-- Light and dark themes
-- Fully portable -- runs from its own folder with no registry or AppData usage
-- Works offline with previously downloaded version data
+- Automatically downloads sound data from official Mojang asset API
+- Runs entirely from its own folder (portable)
 
 ## Technology Stack
 
@@ -21,7 +19,7 @@ A portable desktop app that lets you record your own voice and sounds to replace
 | Frontend | Svelte 5 + SvelteKit + TypeScript |
 | Styling | Tailwind CSS 4 |
 | Audio recording | Web Audio API + MediaRecorder (WAV capture) |
-| Audio conversion | Bundled ffmpeg sidecar (WAV to OGG Vorbis) |
+| Audio conversion | Native Rust encoding via hound + vorbis_rs (WAV to OGG Vorbis) |
 | Sound source | Mojang's official Java Edition asset pipeline API |
 | Build tool | Vite |
 
@@ -32,13 +30,6 @@ Before you can build or run MVPM, make sure you have:
 - **Rust** and **Cargo** (install via [rustup](https://rustup.rs/))
 - **Node.js** (LTS recommended) and **npm**
 - **Tauri CLI** -- installed globally (`npm install -g @tauri-apps/cli`) or invoked via `npx`
-- **ffmpeg binary** -- a static Windows build of ffmpeg placed at:
-  ```
-  src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe
-  ```
-  You can download a static build from [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) or [BtbN's GitHub releases](https://github.com/BtbN/FFmpeg-Builds/releases). Only `ffmpeg.exe` is needed (not ffprobe or ffplay). Rename it to match the path above.
-
-> The `src-tauri/bin/` directory is gitignored because the ffmpeg binary is too large for source control. Every developer must place it manually.
 
 ## Getting Started
 
@@ -50,10 +41,7 @@ cd MVPM
 # 2. Install Node dependencies
 npm install
 
-# 3. Place ffmpeg (see Prerequisites above)
-#    src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe
-
-# 4. Run in development mode
+# 3. Run in development mode
 npx @tauri-apps/cli dev
 ```
 
@@ -65,7 +53,7 @@ The app will open a window. On first launch it fetches the Minecraft version man
 |---------|-------------|
 | `npm install` | Install frontend dependencies |
 | `npx @tauri-apps/cli dev` | Run the full app in development mode (Rust + frontend hot-reload) |
-| `npx @tauri-apps/cli build` | Build a production executable with bundled ffmpeg sidecar |
+| `npx @tauri-apps/cli build` | Build a production executable |
 | `npm run build` | Build the frontend only (output in `build/`) |
 | `npm run check` | Run the Svelte/TypeScript type checker |
 | `npm run check:watch` | Run the type checker in watch mode |
@@ -83,7 +71,7 @@ MVPM/
 │   │       ├── mod.rs               # Module declarations
 │   │       ├── mojang.rs            # Version manifest, asset index, sound downloads
 │   │       ├── packs.rs             # Pack CRUD, metadata, duplication, version change
-│   │       ├── recording.rs         # Save WAV, invoke ffmpeg sidecar, file I/O
+│   │       ├── recording.rs         # Save WAV, native OGG encoding, file I/O
 │   │       └── settings.rs          # Read/write settings.json
 │   ├── Cargo.toml
 │   └── tauri.conf.json
@@ -137,12 +125,11 @@ MVPM/
 
 ## Architecture Notes
 
-- **Rust backend** handles all file I/O, Mojang API requests, pack management, and ffmpeg invocation via Tauri commands. The frontend calls these through `@tauri-apps/api`.
+- **Rust backend** handles all file I/O, Mojang API requests, pack management, and native WAV-to-OGG conversion via Tauri commands. The frontend calls these through `@tauri-apps/api`.
 - **Frontend state** uses Svelte 5 runes (`$state`, `$derived`) in `.svelte.ts` store files rather than traditional Svelte stores.
 - **SvelteKit** is configured with the static adapter in SPA/fallback mode (`+layout.ts` disables SSR and prerendering).
 - **Tailwind CSS 4** is integrated via the `@tailwindcss/vite` plugin. There is no `tailwind.config.js`; theme tokens are defined with `@theme` in `app.css`.
 - **pack_format** for `pack.mcmeta` is dynamically derived from Mojang's version JSON at download time, with a hardcoded fallback table for edge cases.
-- **ffmpeg** is configured as a Tauri sidecar in `tauri.conf.json` under `bundle.externalBin`.
 
 ## How It Works
 
@@ -154,8 +141,6 @@ MVPM/
 ## Disclaimer
 
 MVPM is not affiliated with, endorsed by, or associated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios. All Minecraft assets are downloaded directly from Mojang's public CDN to the user's own machine and are not redistributed.
-
-This application bundles [ffmpeg](https://ffmpeg.org/) for audio conversion. ffmpeg is licensed under the [LGPL 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html) (or GPL, depending on build configuration). The ffmpeg source code is available at [https://ffmpeg.org/download.html](https://ffmpeg.org/download.html). MVPM does not modify ffmpeg; it is included as a standalone binary sidecar.
 
 ## License
 

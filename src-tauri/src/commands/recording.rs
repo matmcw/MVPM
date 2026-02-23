@@ -1,6 +1,8 @@
 use crate::models::PackMeta;
+use std::io::Cursor;
+use std::num::{NonZeroU32, NonZeroU8};
 use std::path::PathBuf;
-use tauri_plugin_shell::ShellExt;
+use vorbis_rs::{VorbisBitrateManagementStrategy, VorbisEncoderBuilder};
 
 fn pack_sounds_dir(pack_id: &str) -> Result<PathBuf, String> {
 	let settings = load_settings();
@@ -8,9 +10,62 @@ fn pack_sounds_dir(pack_id: &str) -> Result<PathBuf, String> {
 	Ok(packs_folder.join(pack_id).join("assets/minecraft/sounds"))
 }
 
+fn wav_to_ogg(wav_data: &[u8]) -> Result<Vec<u8>, String> {
+	let reader = hound::WavReader::new(Cursor::new(wav_data))
+		.map_err(|e| format!("Failed to read WAV data: {}", e))?;
+	let spec = reader.spec();
+
+	let samples_i16: Vec<i16> = reader
+		.into_samples::<i16>()
+		.collect::<Result<Vec<_>, _>>()
+		.map_err(|e| format!("Failed to decode WAV samples: {}", e))?;
+
+	// Convert to mono f32 samples
+	let channels = spec.channels as usize;
+	let mono_f32: Vec<f32> = if channels == 1 {
+		samples_i16.iter().map(|&s| s as f32 / 32768.0).collect()
+	} else {
+		samples_i16
+			.chunks(channels)
+			.map(|frame| {
+				let sum: f32 = frame.iter().map(|&s| s as f32 / 32768.0).sum();
+				sum / channels as f32
+			})
+			.collect()
+	};
+
+	let sample_rate = NonZeroU32::new(44100).unwrap();
+	let mono_channel = NonZeroU8::new(1).unwrap();
+	let mut ogg_out: Vec<u8> = Vec::new();
+
+	let mut encoder = VorbisEncoderBuilder::new_with_serial(
+		sample_rate,
+		mono_channel,
+		&mut ogg_out,
+		0,
+	)
+	.bitrate_management_strategy(VorbisBitrateManagementStrategy::QualityVbr {
+		target_quality: 0.5,
+	})
+	.build()
+	.map_err(|e| format!("Failed to create Vorbis encoder: {}", e))?;
+
+	// Encode in blocks of 4096 samples
+	for chunk in mono_f32.chunks(4096) {
+		encoder
+			.encode_audio_block([chunk])
+			.map_err(|e| format!("Failed to encode audio block: {}", e))?;
+	}
+
+	encoder
+		.finish()
+		.map_err(|e| format!("Failed to finish encoding: {}", e))?;
+
+	Ok(ogg_out)
+}
+
 #[tauri::command]
 pub async fn save_recording(
-	app: tauri::AppHandle,
 	pack_id: String,
 	sound_path: String,
 	wav_data: Vec<u8>,
@@ -21,47 +76,8 @@ pub async fn save_recording(
 	std::fs::create_dir_all(&sounds_dir)
 		.map_err(|e| format!("Failed to create sounds directory: {}", e))?;
 
-	// Write WAV to temp file
-	let temp_dir = std::env::temp_dir();
-	let temp_wav = temp_dir.join(format!("mvpm_recording_{}.wav", uuid::Uuid::new_v4()));
-	let temp_ogg = temp_dir.join(format!("mvpm_recording_{}.ogg", uuid::Uuid::new_v4()));
-
-	std::fs::write(&temp_wav, &wav_data)
-		.map_err(|e| format!("Failed to write temp WAV: {}", e))?;
-
-	// Convert WAV to OGG using ffmpeg sidecar
-	let output = app
-		.shell()
-		.sidecar("ffmpeg")
-		.map_err(|e| format!("Failed to create ffmpeg sidecar: {}", e))?
-		.args([
-			"-i",
-			&temp_wav.to_string_lossy(),
-			"-c:a",
-			"libvorbis",
-			"-q:a",
-			"5",
-			"-ac",
-			"1",
-			"-ar",
-			"44100",
-			"-y",
-			&temp_ogg.to_string_lossy(),
-		])
-		.output()
-		.await
-		.map_err(|e| format!("Failed to run ffmpeg: {}", e))?;
-
-	// Clean up temp WAV
-	let _ = std::fs::remove_file(&temp_wav);
-
-	if !output.status.success() {
-		let _ = std::fs::remove_file(&temp_ogg);
-		return Err(format!(
-			"ffmpeg conversion failed: {}",
-			String::from_utf8_lossy(&output.stderr)
-		));
-	}
+	// Convert WAV to OGG Vorbis using native Rust encoding
+	let ogg_data = wav_to_ogg(&wav_data)?;
 
 	// Determine destination path
 	let rel_path = sound_path
@@ -75,9 +91,9 @@ pub async fn save_recording(
 			.map_err(|e| format!("Failed to create parent directory: {}", e))?;
 	}
 
-	// Move OGG to destination
-	std::fs::copy(&temp_ogg, &dest_path)
-		.map_err(|e| format!("Failed to copy recording to pack: {}", e))?;
+	// Write OGG to destination
+	std::fs::write(&dest_path, &ogg_data)
+		.map_err(|e| format!("Failed to write recording to pack: {}", e))?;
 
 	// If single recording mode, duplicate to all variant paths
 	let mut all_recorded_paths = vec![sound_path.clone()];
@@ -92,16 +108,13 @@ pub async fn save_recording(
 					if let Some(parent) = var_dest.parent() {
 						let _ = std::fs::create_dir_all(parent);
 					}
-					std::fs::copy(&temp_ogg, &var_dest)
-						.map_err(|e| format!("Failed to copy variant: {}", e))?;
+					std::fs::write(&var_dest, &ogg_data)
+						.map_err(|e| format!("Failed to write variant: {}", e))?;
 					all_recorded_paths.push(variant.clone());
 				}
 			}
 		}
 	}
-
-	// Clean up temp OGG
-	let _ = std::fs::remove_file(&temp_ogg);
 
 	// Update pack metadata
 	update_recorded_sounds(&pack_id, &all_recorded_paths)?;

@@ -74,7 +74,6 @@ export async function stopRecording(): Promise<ArrayBuffer> {
 		mediaRecorder.onstop = async () => {
 			try {
 				const blob = new Blob(recordingChunks, { type: 'audio/webm' });
-				// Convert webm to WAV for ffmpeg
 				const wavBuffer = await blobToWav(blob);
 				resolve(wavBuffer);
 			} catch (e) {

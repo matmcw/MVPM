@@ -25,6 +25,3 @@ vite.config.ts.timestamp-*
 # Tauri
 /src-tauri/target
 /src-tauri/gen
-
-# ffmpeg sidecar binary (large, not for source control)
-/src-tauri/bin/

@@ -15,7 +15,7 @@ Repository: https://github.com/matmcw/MVPM.git
 - **Styling**: Tailwind CSS 4 (via `@tailwindcss/vite` plugin; no `tailwind.config.js`; theme tokens in `app.css` using `@theme`)
 - **Audio Playback**: HTML5 Audio (plays .ogg files from Mojang CDN or local cache)
 - **Audio Recording**: Web Audio API + MediaRecorder → WAV
-- **Audio Conversion**: Bundled ffmpeg sidecar (WAV → OGG Vorbis)
+- **Audio Conversion**: Native Rust encoding via `hound` + `vorbis_rs` crates (WAV → OGG Vorbis)
 - **Sound Source**: Mojang's official asset pipeline API (Java Edition only)
 - **Packaging**: Tauri bundler → .msi/.exe (manual builds when requested, no CI/CD)
 - **Build Tool**: Vite
@@ -41,8 +41,8 @@ The app runs entirely from its own folder. No registry entries, no AppData usage
 ### Per-Pack Sound Storage
 Each pack stores its own copy of original Minecraft sounds. Sounds are NOT shared between packs. This simplifies management even though it uses more disk space.
 
-### No Pack Deletion in App
-Users delete pack folders manually via file explorer. This prevents accidental deletion of hours of recordings.
+### In-App Pack Deletion with Confirmation
+Packs can be deleted from within the app via a trash icon on the home screen's pack cards or a "Delete Pack" section on the pack edit page. Both paths require the user to type the pack name to confirm deletion, preventing accidental loss of recordings.
 
 ### Audio Quality
 Fixed sensible defaults: 44.1kHz, mono, ~128kbps OGG Vorbis. Not user-configurable.
@@ -69,9 +69,8 @@ MVPM/
 │   │       ├── mod.rs               # Module declarations
 │   │       ├── mojang.rs            # Version manifest, asset index, sound downloads
 │   │       ├── packs.rs             # Pack CRUD, metadata, duplication, version change
-│   │       ├── recording.rs         # Save WAV, invoke ffmpeg, file I/O
+│   │       ├── recording.rs         # Save WAV, native OGG encoding, file I/O
 │   │       └── settings.rs          # Read/write settings.json
-│   ├── bin/                         # ffmpeg sidecar (gitignored — see Dev Setup)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                             # Svelte 5 frontend
@@ -81,7 +80,8 @@ MVPM/
 │   ├── lib/
 │   │   ├── index.ts
 │   │   ├── assets/
-│   │   │   └── favicon.svg
+│   │   │   ├── favicon.svg
+│   │   │   └── help.md              # Help page content (parsed at runtime)
 │   │   ├── components/
 │   │   │   ├── Breadcrumb.svelte        # Directory navigation breadcrumbs
 │   │   │   ├── DownloadProgress.svelte  # Version download progress modal
@@ -124,15 +124,13 @@ MVPM/
 ```
 
 ### Dev Setup Notes
-- `src-tauri/bin/` is **gitignored**. Developers must place a static ffmpeg build at `src-tauri/bin/ffmpeg-x86_64-pc-windows-msvc.exe`.
 - Tailwind CSS 4 has no config file; theme tokens are defined via `@theme` in `src/app.css`.
 - `pack_format` for `pack.mcmeta` is dynamically derived from Mojang's version JSON (downloaded with each version), with a hardcoded fallback table for edge cases.
 
 ### Portable Runtime File Structure
 ```
 MVPM/
-├── MVPM.exe                       # Main executable
-├── ffmpeg.exe                     # Bundled sidecar
+├── MVPM.exe                       # Main executable (single .exe, no external binaries)
 ├── settings.json                  # User preferences (persisted)
 ├── versions/                      # Downloaded version sound caches
 │   ├── 1.21.4/
@@ -163,8 +161,8 @@ MVPM/
 ### 1. Home Screen (`/`)
 - **Simple list** of existing packs, each showing: name, description, version, progress (e.g., "47/823 sounds recorded")
 - **"Create New Pack" button** prominently displayed
-- **Pack actions**: Click pack to open pack editor. Pencil icon → edit screen. Duplicate button → prompts for new name (no duplicate pack names allowed)
-- **No delete** — users delete pack folders manually via file explorer
+- **Pack actions**: Click pack to open pack editor. Pencil icon → edit screen. Duplicate button → prompts for new name (no duplicate pack names allowed). Trash icon → delete with name-confirmation dialog
+- **Delete**: Trash icon on each pack card triggers a confirmation dialog requiring the user to type the pack name before deletion proceeds
 - **Guide section**: Link/button to help page
 
 ### 2. Pack Creation Wizard (`/create/version` → `/create/details` → `/create/icon`)
@@ -197,6 +195,7 @@ MVPM/
 - **Sound tiles**: Show filename. **Green background** if recorded, **default** if not recorded
 - **Category completion**: Category tile turns **green** when ALL sounds within it (recursively) are recorded
 - **Music/long sounds**: Flagged with a **duration indicator** label on the tile (for sounds > 30s like music tracks and records)
+- **Back arrow**: Navigates up one directory level when inside a subdirectory; returns to the home screen when already at the root level
 - **Breadcrumb navigation**: Shows current path (e.g., `sounds > entity > creeper`). Click any segment to navigate up
 - **Selection**:
   - Each tile has a **checkbox in the top-right corner** for selection (highlighted ring when selected)
@@ -233,7 +232,7 @@ MVPM/
 **Recording flow:**
 1. Original sound auto-plays (if setting enabled)
 2. User holds spacebar (configurable key) → recording starts (red indicator, waveform active, timer counting)
-3. User releases spacebar → recording stops, WAV saved, ffmpeg converts to OGG, file placed in pack directory
+3. User releases spacebar → recording stops, WAV saved, converted to OGG natively in Rust, file placed in pack directory
 4. If auto-skip toggle **ON**: automatically advance to next **UNRECORDED** sound (skips already-recorded ones)
 5. If auto-skip toggle **OFF**: stay on current sound, user manually clicks arrows to navigate
 
@@ -251,6 +250,7 @@ MVPM/
 
 ### 5. Pack Edit Screen (`/pack/[id]/edit`)
 - Edit pack **name**, **description**, and **icon** (upload new pack.png)
+- **Delete pack**: "Delete Pack" section with a confirmation dialog that requires typing the pack name. On confirmation, the pack folder is removed and the user is returned to the home screen.
 - **Duplicate pack**: Button that copies the entire pack folder. Prompts for new unique name.
 - **Change version**:
   1. Select new version from dropdown
@@ -269,6 +269,7 @@ MVPM/
 
 ### 7. Help Page (`/help`)
 - **Sections**: Getting Started, Recording Sounds, Using Your Pack (explain copy-to-resourcepacks), Settings, FAQ
+- **Content source**: Help text lives in `src/lib/assets/help.md` and is parsed by a simple inline markdown renderer in the help page component. This makes it easy to edit help content without touching Svelte code.
 - Accessible from **every screen** via a `?` help button in the corner of the app shell
 
 ---
@@ -311,15 +312,15 @@ interface SoundNode {
 
 1. **Record**: Web Audio API + MediaRecorder → capture as WAV (`audio/wav` MIME type)
 2. **Save temp**: Write WAV blob to temp file via Tauri filesystem API
-3. **Convert**: Tauri Rust command invokes ffmpeg sidecar: `ffmpeg -i temp.wav -c:a libvorbis -q:a 5 -y output.ogg`
+3. **Convert**: Tauri Rust command calls `wav_to_ogg()` in `recording.rs` — reads WAV via `hound`, encodes to OGG Vorbis via `vorbis_rs` (44.1kHz, mono, ~128kbps)
 4. **Place**: Move `output.ogg` to correct path in pack's `assets/minecraft/sounds/` directory
 5. **Cleanup**: Delete temp WAV file
 6. **Single mode**: If single recording mode is ON, also copy the .ogg to all other variant filenames for the same sound event
 
-### ffmpeg Bundling
-- ffmpeg.exe bundled via Tauri's sidecar system
-- Configured in `tauri.conf.json` under `bundle.externalBin`
-- Auto-included in builds
+### Native Encoding
+- WAV reading: `hound` crate (Apache 2.0)
+- OGG Vorbis encoding: `vorbis_rs` crate (BSD-3-Clause, wraps libvorbis/libogg)
+- No external binaries required — everything compiles into the single .exe
 
 ---
 
@@ -356,7 +357,7 @@ interface SoundNode {
 All planned features have been implemented in the initial codebase. The build order below reflects the sequence used and can guide future contributors:
 
 1. **Scaffold**: Tauri 2 + Svelte 5 + SvelteKit + Tailwind CSS 4 + Vite project setup
-2. **Rust backend**: All Tauri commands (Mojang API, pack management, file I/O, settings, ffmpeg invocation)
+2. **Rust backend**: All Tauri commands (Mojang API, pack management, file I/O, settings, native audio conversion)
 3. **Data stores**: Svelte 5 rune-based stores (`.svelte.ts`) for versions, packs, sounds, recording, settings
 4. **Layout + routing**: App shell with help button, theme toggle, all routes (SPA mode via static adapter)
 5. **Home screen**: Pack list, create button
@@ -367,13 +368,13 @@ All planned features have been implemented in the initial codebase. The build or
 10. **Help page**: All sections
 11. **Pack edit screen**: Edit details, duplicate, version change
 12. **Polish**: Theme implementation (light default + dark), transitions, error handling, edge cases
-13. **Packaging config**: Tauri bundler configuration for portable .exe + ffmpeg sidecar
+13. **Packaging config**: Tauri bundler configuration for portable single .exe
 
 ### Development Commands
 ```
 npm install                    # Install frontend dependencies
 npx @tauri-apps/cli dev        # Run in development mode (Rust + frontend hot-reload)
-npx @tauri-apps/cli build      # Build production executable with ffmpeg sidecar
+npx @tauri-apps/cli build      # Build production executable
 npm run build                  # Build frontend only
 npm run check                  # TypeScript/Svelte type checking
 ```
@@ -399,4 +400,7 @@ npm run check                  # TypeScript/Svelte type checking
 16. Theme toggle switches between light and dark modes
 17. Help page accessible from every screen via ? button
 18. Pack edit: rename, change description, change icon, duplicate, version change all work
-19. `npx @tauri-apps/cli build` produces working portable .exe with ffmpeg sidecar
+19. Pack deletion: trash icon on home screen and delete section on edit page both require name confirmation, pack folder is removed on confirm
+20. Back arrow in pack editor navigates up one directory level; at root it returns to the home screen
+21. Help page renders content from `src/lib/assets/help.md` correctly
+22. `npx @tauri-apps/cli build` produces working portable single .exe

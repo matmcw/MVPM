@@ -63,6 +63,4 @@ Yes! Go to the pack edit screen and change the version. Sounds that exist in bot
 
 MVPM is not affiliated with, endorsed by, or associated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios.
 
-This application uses ffmpeg for audio conversion, which is licensed under the LGPL 2.1.
-
 MVPM is provided as-is with no warranty. See the LICENSE file for details.
