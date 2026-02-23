@@ -101,6 +101,7 @@ MVPM/
 │   │   │   ├── TileGrid.svelte
 │   │   │   └── WarningDialog.svelte
 │   │   ├── stores/                  # Svelte 5 rune-based state (.svelte.ts)
+│   │   │   ├── createWizard.svelte.ts
 │   │   │   ├── pack.svelte.ts
 │   │   │   ├── recording.svelte.ts
 │   │   │   ├── settings.svelte.ts

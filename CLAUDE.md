@@ -93,6 +93,7 @@ MVPM/
 │   │   │   ├── TileGrid.svelte         # Sound/category tile grid
 │   │   │   └── WarningDialog.svelte     # Reusable warning/confirmation dialog
 │   │   ├── stores/                  # Svelte 5 rune-based state (.svelte.ts)
+│   │   │   ├── createWizard.svelte.ts # Wizard state persisted across back-navigation
 │   │   │   ├── pack.svelte.ts       # Current pack state, recording progress
 │   │   │   ├── recording.svelte.ts  # Recording workflow state
 │   │   │   ├── settings.svelte.ts   # User preferences (persisted)
@@ -192,15 +193,15 @@ MVPM/
 
 ### 3. Pack Editor — Tile Grid (`/pack/[id]`)
 - **CSS Grid** of tiles with responsive columns
-- **Category tiles**: Distinct border/color from sound tiles. **Double-click** to enter (navigate into subdirectory)
+- **Category tiles**: Distinct border/color from sound tiles. **Single-click** to enter (navigate into subdirectory)
 - **Sound tiles**: Show filename. **Green background** if recorded, **default** if not recorded
 - **Category completion**: Category tile turns **green** when ALL sounds within it (recursively) are recorded
 - **Music/long sounds**: Flagged with a **duration indicator** label on the tile (for sounds > 30s like music tracks and records)
 - **Breadcrumb navigation**: Shows current path (e.g., `sounds > entity > creeper`). Click any segment to navigate up
 - **Selection**:
-  - Single-click to select/deselect a tile (highlighted in **blue**)
-  - Multi-select supported
-  - **Clicking a category selects ALL sounds within it recursively** (including all subdirectories)
+  - Each tile has a **checkbox in the top-right corner** for selection (highlighted ring when selected)
+  - **Drag-select** supported: click and drag across the grid to select multiple tiles at once
+  - **Checking a category selects ALL sounds within it recursively** (including all subdirectories); partial selection shown via indeterminate checkbox state
 - **Search bar**: Global search across ALL sounds for the version (not just current directory). Results shown as a flat list. Clicking a result navigates to its directory with it highlighted. This lets users find specific mob/block sounds easily.
 - **"Record Selected" button**:
   - If any selected sounds are already recorded: warning dialog — "You have already recorded some of the selected sounds. Would you like to re-record them? This will permanently overwrite the recordings." Options: **Re-record** / **Skip recorded ones**
@@ -384,8 +385,8 @@ npm run check                  # TypeScript/Svelte type checking
 2. Version list populates from Mojang API (or falls back to cache if offline)
 3. Create a new pack: complete 3-step wizard, verify pack folder + pack.mcmeta created on disk
 4. Download a version's sounds: progress bar works, all files download, retry logic works
-5. Tile grid: navigate categories via double-click, breadcrumbs work, search finds sounds globally
-6. Selection: click selects, category click selects all children recursively, blue highlight appears
+5. Tile grid: navigate categories via single-click, breadcrumbs work, search finds sounds globally
+6. Selection: checkbox selects, drag-select works, category checkbox selects all children recursively
 7. Record a sound: hold spacebar → release → OGG file appears at correct path in pack directory
 8. Auto-skip toggle: ON advances to next unrecorded sound, clicking arrow turns toggle OFF
 9. Done button: warns about unrecorded sounds, "Yes" loops through them, "Skip" returns to grid
