@@ -35,13 +35,17 @@
 			soundsStore.navigateToFile(node);
 			return;
 		}
-		soundsStore.toggleSelect(node);
-	}
-
-	function handleTileDblClick(node: SoundNode) {
 		if (node.nodeType === 'directory') {
 			soundsStore.enterDirectory(node.name);
 		}
+	}
+
+	function handleTileCheck(node: SoundNode, _checked: boolean) {
+		soundsStore.toggleSelect(node);
+	}
+
+	function handleDragSelect(nodes: SoundNode[]) {
+		soundsStore.selectNodes(nodes);
 	}
 
 	function handleRecordSelected() {
@@ -151,7 +155,8 @@
 				recordedSounds={recorded}
 				selectedPaths={soundsStore.selectedPaths}
 				ontileclick={handleTileClick}
-				ontiledblclick={handleTileDblClick}
+				ontilecheck={handleTileCheck}
+				ondragselect={handleDragSelect}
 			/>
 		{/if}
 	</div>

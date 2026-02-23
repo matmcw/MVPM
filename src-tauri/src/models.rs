@@ -52,7 +52,7 @@ pub struct LatestVersions {
 #[serde(rename_all = "camelCase")]
 pub struct VersionEntry {
 	pub id: String,
-	#[serde(rename = "type")]
+	#[serde(alias = "type")]
 	pub version_type: String,
 	pub url: String,
 	pub time: String,

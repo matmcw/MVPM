@@ -87,6 +87,19 @@ export const soundsStore = {
 		selectedPaths = new Set();
 	},
 
+	selectNodes(nodes: SoundNode[]) {
+		const newSelected = new Set(selectedPaths);
+		for (const node of nodes) {
+			if (node.nodeType === 'file') {
+				newSelected.add(node.path);
+			} else if (node.children) {
+				const allFiles = collectFiles(node.children);
+				allFiles.forEach((f) => newSelected.add(f.path));
+			}
+		}
+		selectedPaths = newSelected;
+	},
+
 	getSelectedSounds(): SoundNode[] {
 		return flattenFiles(soundTree).filter((n) => selectedPaths.has(n.path));
 	},

@@ -2,10 +2,11 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { versionsStore } from '$lib/stores/versions.svelte';
+	import { createWizardStore } from '$lib/stores/createWizard.svelte';
 	import DownloadProgress from '$lib/components/DownloadProgress.svelte';
 
 	let releasesOnly = $state(true);
-	let selectedVersion = $state<string | null>(null);
+	let selectedVersion = $state<string | null>(createWizardStore.version);
 	let showDownload = $state(false);
 	let searchFilter = $state('');
 
@@ -26,7 +27,8 @@
 		if (!selectedVersion) return;
 		const downloaded = await versionsStore.isDownloaded(selectedVersion);
 		if (downloaded) {
-			goto(`/create/details?version=${selectedVersion}`);
+			createWizardStore.version = selectedVersion;
+			goto('/create/details');
 		} else {
 			showDownload = true;
 		}
@@ -35,12 +37,13 @@
 	function onDownloadSuccess() {
 		showDownload = false;
 		if (selectedVersion) {
-			goto(`/create/details?version=${selectedVersion}`);
+			createWizardStore.version = selectedVersion;
+			goto('/create/details');
 		}
 	}
 </script>
 
-<div class="max-w-2xl mx-auto p-6">
+<div class="max-w-2xl mx-auto p-6 min-h-full flex flex-col justify-center">
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold mb-1">Create New Pack</h1>
 		<p class="text-[var(--text-secondary)]">Step 1 of 3: Select Minecraft version</p>
@@ -92,7 +95,7 @@
 
 	<div class="flex items-center justify-between mt-6">
 		<button
-			onclick={() => goto('/')}
+			onclick={() => { createWizardStore.clear(); goto('/'); }}
 			class="px-4 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors"
 		>
 			Cancel

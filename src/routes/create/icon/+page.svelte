@@ -1,16 +1,16 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
 	import { packStore } from '$lib/stores/pack.svelte';
+	import { createWizardStore } from '$lib/stores/createWizard.svelte';
 	import { open } from '@tauri-apps/plugin-dialog';
 
-	let iconPath = $state<string | null>(null);
+	let iconPath = $state<string | null>(createWizardStore.iconPath);
 	let creating = $state(false);
 	let error = $state('');
 
-	const version = $derived(page.url.searchParams.get('version') ?? '');
-	const name = $derived(page.url.searchParams.get('name') ?? '');
-	const description = $derived(page.url.searchParams.get('description') ?? '');
+	const version = $derived(createWizardStore.version ?? '');
+	const name = $derived(createWizardStore.name);
+	const description = $derived(createWizardStore.description);
 
 	async function selectIcon() {
 		const result = await open({
@@ -20,6 +20,7 @@
 		});
 		if (result) {
 			iconPath = result as string;
+			createWizardStore.iconPath = result as string;
 		}
 	}
 
@@ -33,6 +34,7 @@
 				version,
 				skipIcon ? undefined : iconPath ?? undefined,
 			);
+			createWizardStore.clear();
 			goto(`/pack/${pack.id}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
@@ -41,7 +43,7 @@
 	}
 </script>
 
-<div class="max-w-2xl mx-auto p-6">
+<div class="max-w-2xl mx-auto p-6 min-h-full flex flex-col justify-center">
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold mb-1">Create New Pack</h1>
 		<p class="text-[var(--text-secondary)]">Step 3 of 3: Pack icon (optional)</p>
@@ -85,7 +87,7 @@
 
 	<div class="flex items-center justify-between">
 		<button
-			onclick={() => history.back()}
+			onclick={() => goto('/create/details')}
 			class="px-4 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors"
 		>
 			Back

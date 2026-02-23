@@ -9,7 +9,7 @@
 
 	let { pack, onduplicate }: Props = $props();
 
-	const recordedCount = pack.recordedSounds.length;
+	const recordedCount = $derived(pack.recordedSounds.length);
 </script>
 
 <div class="flex items-center gap-4 p-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)] transition-colors group">

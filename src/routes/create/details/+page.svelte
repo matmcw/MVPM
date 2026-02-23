@@ -1,12 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import { page } from '$app/state';
+	import { createWizardStore } from '$lib/stores/createWizard.svelte';
 
-	let name = $state('');
-	let description = $state('');
+	let name = $state(createWizardStore.name);
+	let description = $state(createWizardStore.description);
 	let nameError = $state('');
 
-	const version = $derived(page.url.searchParams.get('version') ?? '');
+	const version = $derived(createWizardStore.version ?? '');
 
 	function handleNext() {
 		if (!name.trim()) {
@@ -14,16 +14,13 @@
 			return;
 		}
 		nameError = '';
-		const params = new URLSearchParams({
-			version,
-			name: name.trim(),
-			description: description.trim(),
-		});
-		goto(`/create/icon?${params.toString()}`);
+		createWizardStore.name = name.trim();
+		createWizardStore.description = description.trim();
+		goto('/create/icon');
 	}
 </script>
 
-<div class="max-w-2xl mx-auto p-6">
+<div class="max-w-2xl mx-auto p-6 min-h-full flex flex-col justify-center">
 	<div class="mb-6">
 		<h1 class="text-2xl font-bold mb-1">Create New Pack</h1>
 		<p class="text-[var(--text-secondary)]">Step 2 of 3: Pack details (version: {version})</p>

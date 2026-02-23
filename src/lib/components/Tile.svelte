@@ -5,30 +5,54 @@
 		node: SoundNode;
 		isRecorded: boolean;
 		isSelected: boolean;
+		isPartiallySelected?: boolean;
 		onclick: () => void;
-		ondblclick?: () => void;
+		oncheckchange: (checked: boolean) => void;
 	}
 
-	let { node, isRecorded, isSelected, onclick, ondblclick }: Props = $props();
+	let { node, isRecorded, isSelected, isPartiallySelected, onclick, oncheckchange }: Props = $props();
 
-	const isDir = node.nodeType === 'directory';
+	const isDir = $derived(node.nodeType === 'directory');
+
+	let checkboxRef = $state<HTMLInputElement | null>(null);
+
+	$effect(() => {
+		if (checkboxRef) {
+			checkboxRef.indeterminate = (isPartiallySelected ?? false) && !isSelected;
+		}
+	});
 </script>
 
 <button
 	{onclick}
-	ondblclick={ondblclick}
 	class="relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all duration-150 text-center min-h-[80px] cursor-pointer
-		{isSelected
-			? 'border-selected bg-selected-light'
-			: isDir
-				? isRecorded
-					? 'border-success/50 bg-success-light hover:border-success'
-					: 'border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)]'
-				: isRecorded
-					? 'border-success/50 bg-success-light hover:border-success'
-					: 'border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)]'
-		}"
+		{isDir
+			? isRecorded
+				? 'border-success/50 bg-success-light hover:border-success'
+				: 'border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)]'
+			: isRecorded
+				? 'border-success/50 bg-success-light hover:border-success'
+				: 'border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)]'
+		}
+		{isSelected ? 'ring-2 ring-selected/50' : ''}"
+	data-path={node.path}
 >
+	<!-- Selection checkbox -->
+	<div
+		class="absolute top-1 right-1 z-10"
+		role="presentation"
+		onclick={(e: MouseEvent) => e.stopPropagation()}
+		onmousedown={(e: MouseEvent) => e.stopPropagation()}
+	>
+		<input
+			bind:this={checkboxRef}
+			type="checkbox"
+			checked={isSelected}
+			onchange={(e) => oncheckchange(e.currentTarget.checked)}
+			class="w-4 h-4 rounded accent-[var(--color-primary)] cursor-pointer"
+		/>
+	</div>
+
 	{#if isDir}
 		<svg
 			class="mb-1 {isRecorded ? 'text-success' : 'text-[var(--text-muted)]'}"
@@ -54,7 +78,7 @@
 	</span>
 
 	{#if node.isLongSound}
-		<span class="absolute top-1 right-1 text-[10px] px-1 py-0.5 rounded bg-warning/20 text-warning font-medium">
+		<span class="absolute bottom-1 right-1 text-[10px] px-1 py-0.5 rounded bg-warning/20 text-warning font-medium">
 			LONG
 		</span>
 	{/if}
