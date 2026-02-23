@@ -15,6 +15,7 @@
 	let { nodes, recordedSounds, selectedPaths, ontileclick, ontilecheck, ondragselect }: Props = $props();
 
 	let isDragging = $state(false);
+	let dragPending = $state(false);
 	let dragStartX = $state(0);
 	let dragStartY = $state(0);
 	let dragCurrentX = $state(0);
@@ -62,7 +63,7 @@
 		if (e.button !== 0) return;
 		if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
 
-		isDragging = true;
+		dragPending = true;
 		dragStartX = e.clientX;
 		dragStartY = e.clientY;
 		dragCurrentX = e.clientX;
@@ -70,18 +71,24 @@
 	}
 
 	function handleMouseMove(e: MouseEvent) {
-		if (!isDragging) return;
+		if (!dragPending && !isDragging) return;
 		dragCurrentX = e.clientX;
 		dragCurrentY = e.clientY;
+
+		if (dragPending && !isDragging) {
+			const dx = Math.abs(dragCurrentX - dragStartX);
+			const dy = Math.abs(dragCurrentY - dragStartY);
+			if (dx > 5 || dy > 5) {
+				isDragging = true;
+				dragPending = false;
+			}
+		}
 	}
 
 	function handleMouseUp() {
+		dragPending = false;
 		if (!isDragging) return;
 		isDragging = false;
-
-		const dx = Math.abs(dragCurrentX - dragStartX);
-		const dy = Math.abs(dragCurrentY - dragStartY);
-		if (dx < 5 && dy < 5) return;
 
 		const selRect = {
 			left: Math.min(dragStartX, dragCurrentX),
@@ -117,6 +124,7 @@
 <svelte:window
 	onmousemove={handleMouseMove}
 	onmouseup={handleMouseUp}
+	onblur={() => { dragPending = false; isDragging = false; }}
 />
 
 {#if nodes.length === 0}
