@@ -1,6 +1,8 @@
 # MVPM -- Minecraft Voice Pack Maker
 
-A portable desktop app that lets you record your own voice and sounds to replace Minecraft Java Edition's default sounds, creating custom resource packs using your voice.
+A portable desktop app that lets you record your own voice and sounds to replace Minecraft Java Edition's default sounds, creating custom resource packs.
+
+Your pack is always a valid, live resource pack — there is no export step. Just copy the pack folder to `.minecraft/resourcepacks/` and go.
 
 ## Features
 
@@ -9,9 +11,23 @@ A portable desktop app that lets you record your own voice and sounds to replace
 - Tile grid editor with categories, search, breadcrumb navigation, and multi-select
 - Single recording mode: record once per sound event and duplicate to all variants
 - Automatically downloads sound data from official Mojang asset API
-- Runs entirely from its own folder (portable)
+- Light and dark themes
+- Fully portable — runs from its own folder with no registry or AppData usage
 
-## Technology Stack
+## How It Works
+
+1. **Create a pack** — pick a Minecraft version, enter a name and description, optionally upload an icon. The app downloads all sounds for that version from Mojang's CDN.
+2. **Browse sounds** — navigate the tile grid by category (entity, block, music, etc.). Search globally for any sound.
+3. **Record** — select sounds and enter the recording workflow. Hold the record key (spacebar by default) to record, release to stop. The recording is automatically converted to OGG Vorbis and placed at the correct path in the pack.
+4. **Use the pack** — copy your pack folder to `.minecraft/resourcepacks/`, enable it in Minecraft, and hear your recordings in-game.
+
+You can copy the pack at any time, even with just a few sounds recorded. Any sounds you haven't recorded will use the Minecraft defaults.
+
+---
+
+## Development
+
+### Technology Stack
 
 | Layer | Technology |
 |-------|-----------|
@@ -23,15 +39,13 @@ A portable desktop app that lets you record your own voice and sounds to replace
 | Sound source | Mojang's official Java Edition asset pipeline API |
 | Build tool | Vite |
 
-## Prerequisites
-
-Before you can build or run MVPM, make sure you have:
+### Prerequisites
 
 - **Rust** and **Cargo** (install via [rustup](https://rustup.rs/))
 - **Node.js** (LTS recommended) and **npm**
-- **Tauri CLI** -- installed globally (`npm install -g @tauri-apps/cli`) or invoked via `npx`
+- **Tauri CLI** — installed globally (`npm install -g @tauri-apps/cli`) or invoked via `npx`
 
-## Getting Started
+### Getting Started
 
 ```bash
 # 1. Clone the repository
@@ -47,7 +61,7 @@ npx @tauri-apps/cli dev
 
 The app will open a window. On first launch it fetches the Minecraft version manifest from Mojang and lets you create your first voice pack.
 
-## Development Commands
+### Commands
 
 | Command | Description |
 |---------|-------------|
@@ -58,7 +72,7 @@ The app will open a window. On first launch it fetches the Minecraft version man
 | `npm run check` | Run the Svelte/TypeScript type checker |
 | `npm run check:watch` | Run the type checker in watch mode |
 
-## Project Structure
+### Project Structure
 
 ```
 MVPM/
@@ -83,47 +97,18 @@ MVPM/
 │   │   │   ├── favicon.svg
 │   │   │   └── help.md              # Help page content (parsed at runtime)
 │   │   ├── components/              # Reusable UI components
-│   │   │   ├── Breadcrumb.svelte
-│   │   │   ├── DownloadProgress.svelte
-│   │   │   ├── HelpButton.svelte
-│   │   │   ├── PackCard.svelte
-│   │   │   ├── SearchBar.svelte
-│   │   │   ├── ThemeToggle.svelte
-│   │   │   ├── Tile.svelte
-│   │   │   ├── TileGrid.svelte
-│   │   │   └── WarningDialog.svelte
 │   │   ├── stores/                  # Svelte 5 rune-based state (.svelte.ts)
-│   │   │   ├── createWizard.svelte.ts
-│   │   │   ├── pack.svelte.ts
-│   │   │   ├── recording.svelte.ts
-│   │   │   ├── settings.svelte.ts
-│   │   │   ├── sounds.svelte.ts
-│   │   │   └── versions.svelte.ts
 │   │   └── utils/
 │   │       ├── api.ts               # Tauri invoke wrappers + shared types
 │   │       └── audio.ts             # Playback + recording helpers
-│   └── routes/
-│       ├── +layout.svelte           # App shell (help button, theme toggle)
-│       ├── +layout.ts               # Disables SSR/prerender for SPA mode
-│       ├── +page.svelte             # Home: pack list + create button
-│       ├── create/
-│       │   ├── version/+page.svelte # Wizard step 1: pick a Minecraft version
-│       │   ├── details/+page.svelte # Wizard step 2: name + description
-│       │   └── icon/+page.svelte    # Wizard step 3: optional pack icon
-│       ├── pack/[id]/
-│       │   ├── +page.svelte         # Pack editor: tile grid
-│       │   └── edit/+page.svelte    # Edit pack name/description/icon/version
-│       ├── record/+page.svelte      # Recording workflow screen
-│       ├── settings/+page.svelte    # App settings
-│       └── help/+page.svelte        # User guide
+│   └── routes/                      # SvelteKit pages
 ├── package.json
-├── svelte.config.js                 # SvelteKit config (static adapter, SPA fallback)
-├── vite.config.ts                   # Vite config (Tailwind + SvelteKit plugins)
-├── tsconfig.json
-└── CLAUDE.md                        # Project specification and architecture reference
+├── svelte.config.js
+├── vite.config.ts
+└── tsconfig.json
 ```
 
-## Architecture Notes
+### Architecture Notes
 
 - **Rust backend** handles all file I/O, Mojang API requests, pack management, and native WAV-to-OGG conversion via Tauri commands. The frontend calls these through `@tauri-apps/api`.
 - **Frontend state** uses Svelte 5 runes (`$state`, `$derived`) in `.svelte.ts` store files rather than traditional Svelte stores.
@@ -131,17 +116,16 @@ MVPM/
 - **Tailwind CSS 4** is integrated via the `@tailwindcss/vite` plugin. There is no `tailwind.config.js`; theme tokens are defined with `@theme` in `app.css`.
 - **pack_format** for `pack.mcmeta` is dynamically derived from Mojang's version JSON at download time, with a hardcoded fallback table for edge cases.
 
-## How It Works
+---
 
-1. **Create a pack** -- pick a Minecraft version, enter a name and description, optionally upload an icon. The app downloads all sounds for that version from Mojang's CDN.
-2. **Browse sounds** -- navigate the tile grid by category (entity, block, music, etc.). Search globally for any sound.
-3. **Record** -- select sounds and enter the recording workflow. Hold the record key (spacebar by default) to record, release to stop. The WAV is automatically converted to OGG Vorbis and placed at the correct path in the pack.
-4. **Use the pack** -- copy your pack folder to `.minecraft/resourcepacks/`, enable it in Minecraft, and hear your recordings in-game.
+## Legal
 
-## Disclaimer
+### Disclaimer
 
 MVPM is not affiliated with, endorsed by, or associated with Mojang Studios or Microsoft. Minecraft is a trademark of Mojang Studios. All Minecraft assets are downloaded directly from Mojang's public CDN to the user's own machine and are not redistributed.
 
-## License
+### License
 
-[MIT](LICENSE)
+MVPM is provided as-is with no warranty. See the [LICENSE](LICENSE) file for details.
+
+[MIT](LICENSE) — Copyright (c) 2026 matmcw
