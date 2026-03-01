@@ -71,6 +71,10 @@ MVPM/
 │   │       ├── packs.rs             # Pack CRUD, metadata, duplication, version change
 │   │       ├── recording.rs         # Save WAV, native OGG encoding, file I/O
 │   │       └── settings.rs          # Read/write settings.json
+│   ├── icons/
+│   │   ├── icon.png                 # Active app icon (32x32 pixel art, used by Tauri bundler)
+│   │   ├── icon-alternative.png     # Alternative 128px version (extra, not referenced anywhere currently)
+│   │   └── big-icon.png             # Full-size logo (extra, not referenced anywhere currently)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                             # Svelte 5 frontend
@@ -80,7 +84,6 @@ MVPM/
 │   ├── lib/
 │   │   ├── index.ts
 │   │   ├── assets/
-│   │   │   ├── favicon.svg
 │   │   │   └── help.md              # Help page content (parsed at runtime)
 │   │   ├── components/
 │   │   │   ├── Breadcrumb.svelte        # Directory navigation breadcrumbs
