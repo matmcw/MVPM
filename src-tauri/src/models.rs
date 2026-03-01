@@ -177,6 +177,9 @@ pub struct PackMeta {
 	pub version_id: String,
 	pub pack_format: u32,
 	pub has_icon: bool,
+	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default)]
+	pub icon_path: Option<String>,
 	pub recorded_sounds: Vec<String>,
 	pub created_at: String,
 }

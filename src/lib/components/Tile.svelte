@@ -6,11 +6,12 @@
 		isRecorded: boolean;
 		isSelected: boolean;
 		isPartiallySelected?: boolean;
+		showPath?: boolean;
 		onclick: () => void;
 		oncheckchange: (checked: boolean) => void;
 	}
 
-	let { node, isRecorded, isSelected, isPartiallySelected, onclick, oncheckchange }: Props = $props();
+	let { node, isRecorded, isSelected, isPartiallySelected, showPath, onclick, oncheckchange }: Props = $props();
 
 	const isDir = $derived(node.nodeType === 'directory');
 
@@ -37,21 +38,23 @@
 		{isSelected ? 'ring-2 ring-selected/50' : ''}"
 	data-path={node.path}
 >
-	<!-- Selection checkbox -->
-	<div
-		class="absolute top-1 right-1 z-10"
-		role="presentation"
-		onclick={(e: MouseEvent) => e.stopPropagation()}
-		onmousedown={(e: MouseEvent) => e.stopPropagation()}
-	>
-		<input
-			bind:this={checkboxRef}
-			type="checkbox"
-			checked={isSelected}
-			onchange={(e) => oncheckchange(e.currentTarget.checked)}
-			class="w-4 h-4 rounded accent-[var(--color-primary)] cursor-pointer"
-		/>
-	</div>
+	<!-- Selection checkbox (directories only) -->
+	{#if isDir}
+		<div
+			class="absolute top-1 right-1 z-10"
+			role="presentation"
+			onclick={(e: MouseEvent) => e.stopPropagation()}
+			onmousedown={(e: MouseEvent) => e.stopPropagation()}
+		>
+			<input
+				bind:this={checkboxRef}
+				type="checkbox"
+				checked={isSelected}
+				onchange={(e) => oncheckchange(e.currentTarget.checked)}
+				class="w-4 h-4 rounded accent-[var(--color-primary)] cursor-pointer"
+			/>
+		</div>
+	{/if}
 
 	{#if isDir}
 		<svg
@@ -76,6 +79,11 @@
 	<span class="text-xs leading-tight break-all max-w-full {isRecorded ? 'text-success' : 'text-[var(--text-primary)]'}">
 		{node.name}
 	</span>
+	{#if showPath && !isDir}
+		<span class="text-[10px] leading-tight break-all max-w-full text-[var(--text-muted)] mt-0.5">
+			{node.path.replace('minecraft/sounds/', '')}
+		</span>
+	{/if}
 
 	{#if node.isLongSound}
 		<span class="absolute bottom-1 right-1 text-[10px] px-1 py-0.5 rounded bg-warning/20 text-warning font-medium">

@@ -24,9 +24,21 @@ fn load_pack_meta(pack_id: &str) -> Result<PackMeta, String> {
 	let meta_path = pack_dir(pack_id)?.join("pack_meta.json");
 	let content = std::fs::read_to_string(&meta_path)
 		.map_err(|e| format!("Failed to read pack metadata: {}", e))?;
-	let meta: PackMeta = serde_json::from_str(&content)
+	let mut meta: PackMeta = serde_json::from_str(&content)
 		.map_err(|e| format!("Failed to parse pack metadata: {}", e))?;
+	populate_icon_path(&mut meta);
 	Ok(meta)
+}
+
+fn populate_icon_path(meta: &mut PackMeta) {
+	if meta.has_icon {
+		if let Ok(dir) = pack_dir(&meta.id) {
+			let icon = dir.join("pack.png");
+			if icon.exists() {
+				meta.icon_path = Some(icon.to_string_lossy().to_string());
+			}
+		}
+	}
 }
 
 fn save_pack_meta(meta: &PackMeta) -> Result<(), String> {
@@ -71,7 +83,8 @@ pub async fn list_packs() -> Result<Vec<PackMeta>, String> {
 			let meta_path = path.join("pack_meta.json");
 			if meta_path.exists() {
 				if let Ok(content) = std::fs::read_to_string(&meta_path) {
-					if let Ok(meta) = serde_json::from_str::<PackMeta>(&content) {
+					if let Ok(mut meta) = serde_json::from_str::<PackMeta>(&content) {
+						populate_icon_path(&mut meta);
 						packs.push(meta);
 					}
 				}
@@ -131,13 +144,14 @@ pub async fn create_pack(
 		.map_err(|e| format!("Failed to write pack.mcmeta: {}", e))?;
 
 	// Create pack_meta.json
-	let meta = PackMeta {
+	let mut meta = PackMeta {
 		id: id.clone(),
 		name,
 		description,
 		version_id,
 		pack_format,
 		has_icon,
+		icon_path: None,
 		recorded_sounds: vec![],
 		created_at: chrono::Utc::now().to_rfc3339(),
 	};
@@ -147,6 +161,7 @@ pub async fn create_pack(
 	std::fs::write(dir.join("pack_meta.json"), meta_content)
 		.map_err(|e| format!("Failed to write pack metadata: {}", e))?;
 
+	populate_icon_path(&mut meta);
 	Ok(meta)
 }
 
@@ -188,6 +203,7 @@ pub async fn update_pack(
 			std::fs::copy(src_path, &dest)
 				.map_err(|e| format!("Failed to copy icon: {}", e))?;
 			meta.has_icon = true;
+			populate_icon_path(&mut meta);
 		}
 	}
 

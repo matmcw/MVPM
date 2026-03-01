@@ -7,12 +7,15 @@
 		nodes: SoundNode[];
 		recordedSounds: string[];
 		selectedPaths: Set<string>;
+		showPath?: boolean;
+		showBackTile?: boolean;
 		ontileclick: (node: SoundNode) => void;
 		ontilecheck: (node: SoundNode, checked: boolean) => void;
 		ondragselect: (nodes: SoundNode[]) => void;
+		onbackclick?: () => void;
 	}
 
-	let { nodes, recordedSounds, selectedPaths, ontileclick, ontilecheck, ondragselect }: Props = $props();
+	let { nodes, recordedSounds, selectedPaths, showPath, showBackTile, ontileclick, ontilecheck, ondragselect, onbackclick }: Props = $props();
 
 	let isDragging = $state(false);
 	let dragPending = $state(false);
@@ -139,12 +142,25 @@
 		role="grid"
 		tabindex="0"
 	>
+		{#if showBackTile && onbackclick}
+			<button
+				onclick={onbackclick}
+				class="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] transition-all duration-150 min-h-[80px] cursor-pointer"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--text-muted)]">
+					<line x1="19" y1="12" x2="5" y2="12"/>
+					<polyline points="12 19 5 12 12 5"/>
+				</svg>
+				<span class="text-xs text-[var(--text-muted)] mt-1">..</span>
+			</button>
+		{/if}
 		{#each nodes as node (node.path)}
 			<Tile
 				{node}
 				isRecorded={isTileRecorded(node)}
 				isSelected={isTileSelected(node)}
 				isPartiallySelected={isTilePartiallySelected(node)}
+				{showPath}
 				onclick={() => ontileclick(node)}
 				oncheckchange={(checked) => ontilecheck(node, checked)}
 			/>

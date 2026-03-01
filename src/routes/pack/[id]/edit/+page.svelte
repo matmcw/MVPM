@@ -5,6 +5,7 @@
 	import { packStore } from '$lib/stores/pack.svelte';
 	import { versionsStore } from '$lib/stores/versions.svelte';
 	import { open } from '@tauri-apps/plugin-dialog';
+	import { convertFileSrc } from '@tauri-apps/api/core';
 	import WarningDialog from '$lib/components/WarningDialog.svelte';
 	import DownloadProgress from '$lib/components/DownloadProgress.svelte';
 
@@ -182,12 +183,21 @@
 		<!-- Icon -->
 		<div class="py-4 border-t border-[var(--border-color)]">
 			<h3 class="font-medium mb-2">Pack Icon</h3>
-			<button
-				onclick={changeIcon}
-				class="px-4 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm"
-			>
-				{packStore.currentPack?.hasIcon ? 'Change Icon' : 'Add Icon'}
-			</button>
+			<div class="flex items-center gap-3">
+				{#if packStore.currentPack?.iconPath}
+					<img
+						src={convertFileSrc(packStore.currentPack.iconPath)}
+						alt="Pack icon"
+						class="w-12 h-12 rounded-lg object-cover border border-[var(--border-color)]"
+					/>
+				{/if}
+				<button
+					onclick={changeIcon}
+					class="px-4 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm"
+				>
+					{packStore.currentPack?.hasIcon ? 'Change Icon' : 'Add Icon'}
+				</button>
+			</div>
 		</div>
 
 		<!-- Version Change -->

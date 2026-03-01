@@ -30,7 +30,7 @@ export const soundsStore = {
 	},
 
 	get breadcrumbs(): { name: string; path: string[] }[] {
-		const crumbs = [{ name: 'sounds', path: [] as string[] }];
+		const crumbs: { name: string; path: string[] }[] = [];
 		for (let i = 0; i < currentPath.length; i++) {
 			crumbs.push({
 				name: currentPath[i],
@@ -118,19 +118,6 @@ export const soundsStore = {
 		} else {
 			searchResults = [];
 		}
-	},
-
-	navigateToFile(node: SoundNode) {
-		// Navigate to the directory containing this file
-		const pathParts = node.path
-			.replace('minecraft/sounds/', '')
-			.split('/');
-		pathParts.pop(); // Remove filename
-		currentPath = pathParts;
-		searchQuery = '';
-		searchResults = [];
-		// Select the file
-		selectedPaths = new Set([node.path]);
 	},
 
 	getTotalSoundCount(): number {

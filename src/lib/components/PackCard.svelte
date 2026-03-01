@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { PackMeta } from '$lib/utils/api';
 	import { goto } from '$app/navigation';
+	import { convertFileSrc } from '@tauri-apps/api/core';
 
 	interface Props {
 		pack: PackMeta;
@@ -13,7 +14,14 @@
 	const recordedCount = $derived(pack.recordedSounds.length);
 </script>
 
-<div class="flex items-center gap-4 p-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)] transition-colors group">
+<div class="relative flex items-center gap-4 p-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)] transition-colors group overflow-hidden">
+	{#if pack.iconPath}
+		<img
+			src={convertFileSrc(pack.iconPath)}
+			alt=""
+			class="absolute right-2 top-1/2 -translate-y-1/2 h-full max-h-16 w-auto opacity-[0.12] object-contain pointer-events-none"
+		/>
+	{/if}
 	<!-- Click area for opening pack -->
 	<button
 		onclick={() => goto(`/pack/${pack.id}`)}

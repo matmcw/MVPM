@@ -3,6 +3,7 @@
 	import { packStore } from '$lib/stores/pack.svelte';
 	import { createWizardStore } from '$lib/stores/createWizard.svelte';
 	import { open } from '@tauri-apps/plugin-dialog';
+	import { convertFileSrc } from '@tauri-apps/api/core';
 
 	let iconPath = $state<string | null>(createWizardStore.iconPath);
 	let creating = $state(false);
@@ -52,9 +53,11 @@
 	<div class="flex flex-col items-center gap-4 py-8">
 		{#if iconPath}
 			<div class="w-32 h-32 rounded-lg border-2 border-dashed border-primary bg-[var(--bg-secondary)] flex items-center justify-center overflow-hidden">
-				<span class="text-sm text-[var(--text-secondary)] text-center px-2 break-all">
-					{iconPath.split(/[/\\]/).pop()}
-				</span>
+				<img
+					src={convertFileSrc(iconPath)}
+					alt="Pack icon"
+					class="w-full h-full object-cover"
+				/>
 			</div>
 			<button
 				onclick={selectIcon}

@@ -61,6 +61,7 @@ export interface PackMeta {
 	versionId: string;
 	packFormat: number;
 	hasIcon: boolean;
+	iconPath?: string;
 	recordedSounds: string[];
 	createdAt: string;
 }
