@@ -73,8 +73,10 @@ MVPM/
 │   │       └── settings.rs          # Read/write settings.json
 │   ├── icons/
 │   │   ├── icon.png                 # Active app icon (32x32 pixel art, used by Tauri bundler)
-│   │   ├── icon-alternative.png     # Alternative 128px version (extra, not referenced anywhere currently)
-│   │   └── big-icon.png             # Full-size logo (extra, not referenced anywhere currently)
+│   │   ├── icon.ico                 # Windows ICO (generated from icon.png, required by Tauri Windows build)
+│   │   ├── small-icon-32px.png      # Original 32px source (extra, not referenced)
+│   │   ├── small-icon-alternative-128px.png  # Alternative 128px version (extra, not referenced)
+│   │   └── big-icon.png             # Full-size logo (extra, not referenced)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                             # Svelte 5 frontend

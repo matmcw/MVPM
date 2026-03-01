@@ -94,6 +94,9 @@ MVPM/
 │   │       ├── packs.rs             # Pack CRUD, metadata, duplication, version change
 │   │       ├── recording.rs         # Save WAV, native OGG encoding, file I/O
 │   │       └── settings.rs          # Read/write settings.json
+│   ├── icons/
+│   │   ├── icon.png                 # App icon (32x32 pixel art)
+│   │   └── icon.ico                 # Windows ICO (required by Tauri build)
 │   ├── Cargo.toml
 │   └── tauri.conf.json
 ├── src/                             # Svelte 5 frontend
@@ -101,7 +104,6 @@ MVPM/
 │   ├── app.html                     # HTML shell
 │   ├── lib/
 │   │   ├── assets/
-│   │   │   ├── favicon.svg
 │   │   │   └── help.md              # Help page content (parsed at runtime)
 │   │   ├── components/              # Reusable UI components
 │   │   ├── stores/                  # Svelte 5 rune-based state (.svelte.ts)
