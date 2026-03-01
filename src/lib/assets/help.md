@@ -43,21 +43,46 @@ You can copy the pack at any time, even with just a few sounds recorded. Any sou
 
 # FAQ
 
-## How do I delete a pack?
+## What Minecraft versions are supported?
 
-Click the trash icon on a pack from the home screen, or use the Delete Pack button on the pack edit page. You'll need to type the pack name to confirm.
+MVPM supports every Java Edition version available in the Mojang version manifest, including releases, snapshots, and betas/alphas.
+MVPM does not support Minecraft Bedrock or any other version.
+
+## Does this work offline?
+
+Yes! You only need an internet connection to download sounds for a Minecraft version. Once downloaded, everything else works fully offline.
+
+## Does MVPM modify my Minecraft installation?
+
+No, MVPM only modifies the resource packs in the set output folder. You must copy them into your `.minecraft/resourcepacks/` directory yourself.
+
+Note: It is possible to set the output directory to `.minecraft.resourcepacks/`, but this is not recommended.
 
 ## What is "Single Recording Mode"?
 
-Many sound events in Minecraft have multiple variants (e.g., a cow has 4 different "moo" sounds). Normally, you'd record each one individually. With Single Recording Mode, you record once and the file is copied to all variants, so your sound plays every time instead of randomly.
+Many sounds in Minecraft have multiple variants. With Single Recording Mode, you only record each sound once and the file is duplicated for each varient.
+
+Say, for instance, you are recording the cow's "moo" sound. With this mode OFF, you record each sound seperately resulting in 4 diferent possible sounds being played at random. With this mode ON, 4 sound files will be created, each with the exact same recording.
 
 ## What are "LONG" sounds?
 
-These are music tracks, ambient loops, and other long sounds (typically over 30 seconds). They're flagged so you know recording them will take more time.
+Long sounds are music tracks, ambient loops, and other long sounds (typically over 30 seconds). They're flagged so you know recording them will take more time.
+
+## What happens if I record over an existing recording?
+
+The old recording is deleted permanently. There is no way to undo re-recording a sound, so ne careful.
+
+## Can I use pre-recorded audio files instead of recording live?
+
+Yes, but they need to be in OGG Vorbis format (the format used by minecraft). You can manually place audio files into the correct directory inside your pack folder and they'll work just like any other recording.
 
 ## Can I change the Minecraft version of an existing pack?
 
-Yes! Go to the pack edit screen and change the version. Sounds that exist in both versions will be kept. Sounds only in the old version will be removed.
+Yes! Go to the pack edit screen and change the version. Sounds that exist in both versions will be kept. Sounds only in the old version will be removed. It is recommended to duplicate your pack before cahnging the version.
+
+## How do I delete a pack?
+
+Click the trash icon on a pack from the home screen, or use the Delete Pack button on the pack edit page. You'll need to type the pack name to confirm. You can also delete the pack from the output folder.
 
 # Legal
 
