@@ -1,4 +1,3 @@
-use crate::models::PackMeta;
 use std::io::Cursor;
 use std::num::{NonZeroU32, NonZeroU8};
 use std::path::PathBuf;
@@ -96,7 +95,6 @@ pub async fn save_recording(
 		.map_err(|e| format!("Failed to write recording to pack: {}", e))?;
 
 	// If single recording mode, duplicate to all variant paths
-	let mut all_recorded_paths = vec![sound_path.clone()];
 	if single_mode {
 		if let Some(ref variants) = variant_paths {
 			for variant in variants {
@@ -110,38 +108,10 @@ pub async fn save_recording(
 					}
 					std::fs::write(&var_dest, &ogg_data)
 						.map_err(|e| format!("Failed to write variant: {}", e))?;
-					all_recorded_paths.push(variant.clone());
 				}
 			}
 		}
 	}
-
-	// Update pack metadata
-	update_recorded_sounds(&pack_id, &all_recorded_paths)?;
-
-	Ok(())
-}
-
-fn update_recorded_sounds(pack_id: &str, new_paths: &[String]) -> Result<(), String> {
-	let settings = load_settings();
-	let packs_folder = crate::commands::settings::get_packs_folder(&settings);
-	let meta_path = packs_folder.join(pack_id).join("pack_meta.json");
-
-	let content = std::fs::read_to_string(&meta_path)
-		.map_err(|e| format!("Failed to read pack metadata: {}", e))?;
-	let mut meta: PackMeta = serde_json::from_str(&content)
-		.map_err(|e| format!("Failed to parse pack metadata: {}", e))?;
-
-	for path in new_paths {
-		if !meta.recorded_sounds.contains(path) {
-			meta.recorded_sounds.push(path.clone());
-		}
-	}
-
-	let json = serde_json::to_string_pretty(&meta)
-		.map_err(|e| format!("Failed to serialize metadata: {}", e))?;
-	std::fs::write(&meta_path, json)
-		.map_err(|e| format!("Failed to write metadata: {}", e))?;
 
 	Ok(())
 }
@@ -168,20 +138,6 @@ pub async fn delete_recording(pack_id: String, sound_path: String) -> Result<(),
 	if file_path.exists() {
 		std::fs::remove_file(&file_path)
 			.map_err(|e| format!("Failed to delete recording: {}", e))?;
-	}
-
-	// Update metadata
-	let settings = load_settings();
-	let packs_folder = crate::commands::settings::get_packs_folder(&settings);
-	let meta_path = packs_folder.join(&pack_id).join("pack_meta.json");
-
-	if let Ok(content) = std::fs::read_to_string(&meta_path) {
-		if let Ok(mut meta) = serde_json::from_str::<PackMeta>(&content) {
-			meta.recorded_sounds.retain(|s| s != &sound_path);
-			if let Ok(json) = serde_json::to_string_pretty(&meta) {
-				let _ = std::fs::write(&meta_path, json);
-			}
-		}
 	}
 
 	Ok(())

@@ -1,7 +1,7 @@
 use crate::commands::mojang::get_pack_format_for_version;
 use crate::commands::settings::{get_packs_folder, get_settings as load_settings_sync};
 use crate::models::*;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn packs_dir() -> Result<PathBuf, String> {
 	let settings = tokio::task::block_in_place(|| {
@@ -27,7 +27,40 @@ fn load_pack_meta(pack_id: &str) -> Result<PackMeta, String> {
 	let mut meta: PackMeta = serde_json::from_str(&content)
 		.map_err(|e| format!("Failed to parse pack metadata: {}", e))?;
 	populate_icon_path(&mut meta);
+	meta.recorded_sounds = scan_recorded_sounds(pack_id);
 	Ok(meta)
+}
+
+fn scan_recorded_sounds(pack_id: &str) -> Vec<String> {
+	let sounds_dir = match pack_dir(pack_id) {
+		Ok(dir) => dir.join("assets").join("minecraft").join("sounds"),
+		Err(_) => return vec![],
+	};
+	if !sounds_dir.exists() {
+		return vec![];
+	}
+	let mut recorded = Vec::new();
+	scan_dir_recursive(&sounds_dir, &sounds_dir, &mut recorded);
+	recorded
+}
+
+fn scan_dir_recursive(base: &Path, current: &Path, results: &mut Vec<String>) {
+	if let Ok(entries) = std::fs::read_dir(current) {
+		for entry in entries.flatten() {
+			let path = entry.path();
+			if path.is_dir() {
+				scan_dir_recursive(base, &path, results);
+			} else if path.extension().map_or(false, |ext| ext == "ogg") {
+				if let Ok(relative) = path.strip_prefix(base) {
+					let logical = format!(
+						"minecraft/sounds/{}",
+						relative.to_string_lossy().replace('\\', "/")
+					);
+					results.push(logical);
+				}
+			}
+		}
+	}
 }
 
 fn populate_icon_path(meta: &mut PackMeta) {
@@ -85,6 +118,7 @@ pub async fn list_packs() -> Result<Vec<PackMeta>, String> {
 				if let Ok(content) = std::fs::read_to_string(&meta_path) {
 					if let Ok(mut meta) = serde_json::from_str::<PackMeta>(&content) {
 						populate_icon_path(&mut meta);
+						meta.recorded_sounds = scan_recorded_sounds(&meta.id);
 						packs.push(meta);
 					}
 				}
@@ -291,8 +325,6 @@ pub async fn change_pack_version(
 		}
 	}
 
-	// Update recorded sounds list
-	meta.recorded_sounds.retain(|s| new_sounds.contains(s));
 	meta.version_id = new_version_id;
 	meta.pack_format = new_pack_format;
 

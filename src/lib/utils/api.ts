@@ -152,10 +152,6 @@ export async function changePackVersion(packId: string, newVersionId: string): P
 	return invoke('change_pack_version', { packId, newVersionId });
 }
 
-export async function getRecordedSounds(packId: string): Promise<string[]> {
-	return invoke('get_recorded_sounds', { packId });
-}
-
 export async function getPackSoundPath(packId: string, soundPath: string): Promise<string | null> {
 	return invoke('get_pack_sound_path', { packId, soundPath });
 }

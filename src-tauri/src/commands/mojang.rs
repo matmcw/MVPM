@@ -319,7 +319,7 @@ pub async fn download_version_sounds(
 #[tauri::command]
 pub async fn get_sound_tree(
 	version_id: String,
-	pack_id: Option<String>,
+	_pack_id: Option<String>,
 ) -> Result<Vec<SoundNode>, String> {
 	let ver_dir = version_dir(&version_id);
 	let ai_path = ver_dir.join("asset_index.json");
@@ -371,13 +371,6 @@ pub async fn get_sound_tree(
 		}
 	}
 
-	// Get recorded sounds list if pack_id is provided
-	let recorded_sounds: Vec<String> = if let Some(ref pid) = pack_id {
-		crate::commands::packs::get_recorded_sounds_internal(pid)?
-	} else {
-		vec![]
-	};
-
 	// Filter sound files from asset index
 	let mut sound_files: Vec<(String, &AssetObject)> = asset_index
 		.objects
@@ -401,7 +394,6 @@ pub async fn get_sound_tree(
 			key,
 			obj,
 			&file_to_event,
-			&recorded_sounds,
 		);
 	}
 
@@ -417,7 +409,6 @@ fn insert_into_tree(
 	full_path: &str,
 	obj: &AssetObject,
 	file_to_event: &HashMap<String, (String, bool, Vec<String>)>,
-	recorded_sounds: &[String],
 ) {
 	if parts.is_empty() {
 		return;
@@ -464,7 +455,6 @@ fn insert_into_tree(
 				full_path,
 				obj,
 				file_to_event,
-				recorded_sounds,
 			);
 		} else {
 			let mut new_children = vec![];
@@ -474,7 +464,6 @@ fn insert_into_tree(
 				full_path,
 				obj,
 				file_to_event,
-				recorded_sounds,
 			);
 
 			children.push(SoundNode {
