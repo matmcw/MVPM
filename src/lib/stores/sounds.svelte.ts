@@ -120,14 +120,17 @@ export const soundsStore = {
 	setSearch(query: string) {
 		searchQuery = query;
 		if (query.trim()) {
-			const allFiles = flattenFiles(soundTree);
 			const q = query.toLowerCase();
-			searchResults = allFiles.filter(
+			const matchingDirs = flattenDirectories(soundTree).filter(
+				(d) => d.name.toLowerCase().includes(q) || d.path.toLowerCase().includes(q),
+			);
+			const matchingFiles = flattenFiles(soundTree).filter(
 				(f) =>
 					f.name.toLowerCase().includes(q) ||
 					f.path.toLowerCase().includes(q) ||
 					(f.soundEvent && f.soundEvent.toLowerCase().includes(q)),
 			);
+			searchResults = [...matchingDirs, ...matchingFiles];
 		} else {
 			searchResults = [];
 		}
@@ -153,6 +156,19 @@ function collectFiles(nodes: SoundNode[]): SoundNode[] {
 
 function flattenFiles(nodes: SoundNode[]): SoundNode[] {
 	return collectFiles(nodes);
+}
+
+function flattenDirectories(nodes: SoundNode[]): SoundNode[] {
+	const dirs: SoundNode[] = [];
+	for (const node of nodes) {
+		if (node.nodeType === 'directory') {
+			dirs.push(node);
+			if (node.children) {
+				dirs.push(...flattenDirectories(node.children));
+			}
+		}
+	}
+	return dirs;
 }
 
 // Check if all files in a directory are recorded

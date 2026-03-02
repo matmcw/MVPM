@@ -82,7 +82,7 @@
 	{#if isDir && soundCount !== undefined}
 		<span class="text-[10px] text-[var(--text-muted)] -mt-0.5">({soundCount})</span>
 	{/if}
-	{#if showPath && !isDir}
+	{#if showPath}
 		<span class="text-[10px] leading-tight break-all max-w-full text-[var(--text-muted)] mt-0.5">
 			{node.path.replace('minecraft/sounds/', '')}
 		</span>

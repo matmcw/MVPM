@@ -32,7 +32,11 @@
 
 	function handleTileClick(node: SoundNode) {
 		if (node.nodeType === 'directory') {
-			soundsStore.enterDirectory(node.name);
+			if (soundsStore.searchQuery) {
+				soundsStore.toggleSelect(node);
+			} else {
+				soundsStore.enterDirectory(node.name);
+			}
 		} else {
 			soundsStore.toggleSelect(node);
 		}
