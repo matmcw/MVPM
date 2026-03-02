@@ -2044,7 +2044,6 @@ dependencies = [
  "tauri-plugin-fs",
  "tauri-plugin-log",
  "tokio",
- "uuid",
  "vorbis_rs",
 ]
 
