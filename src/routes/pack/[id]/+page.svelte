@@ -9,6 +9,7 @@
 	import Breadcrumb from '$lib/components/Breadcrumb.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
 	import WarningDialog from '$lib/components/WarningDialog.svelte';
+	import { settingsStore } from '$lib/stores/settings.svelte';
 	import type { SoundNode } from '$lib/utils/api';
 
 	const packId = $derived(page.params.id);
@@ -62,9 +63,21 @@
 		}
 	}
 
+	function deduplicateForSingleMode(sounds: SoundNode[]): SoundNode[] {
+		const seenEvents = new Set<string>();
+		return sounds.filter((s) => {
+			if (!s.soundEvent) return true;
+			if (seenEvents.has(s.soundEvent)) return false;
+			seenEvents.add(s.soundEvent);
+			return true;
+		});
+	}
+
 	function startRecording(sounds: SoundNode[]) {
 		if (!packStore.currentPack) return;
-		recordingStore.setup(sounds, packId, packStore.currentPack.versionId);
+		const isSingleMode = settingsStore.singleRecordingMode;
+		const finalSounds = isSingleMode ? deduplicateForSingleMode(sounds) : sounds;
+		recordingStore.setup(finalSounds, packId, packStore.currentPack.versionId, isSingleMode);
 		goto('/record');
 	}
 

@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 </script>
 
 <button
-	onclick={() => goto('/help')}
+	onclick={() => page.url.pathname === '/help' ? history.back() : goto('/help')}
 	class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
 	title="Help"
 >

@@ -5,6 +5,7 @@ let currentIndex = $state(0);
 let autoSkip = $state(false);
 let packId = $state('');
 let versionId = $state('');
+let singleMode = $state(false);
 
 export const recordingStore = {
 	get sounds() { return sounds; },
@@ -13,6 +14,7 @@ export const recordingStore = {
 	get autoSkip() { return autoSkip; },
 	get packId() { return packId; },
 	get versionId() { return versionId; },
+	get singleMode() { return singleMode; },
 	get total() { return sounds.length; },
 
 	get progress() {
@@ -23,12 +25,14 @@ export const recordingStore = {
 		selectedSounds: SoundNode[],
 		pack: string,
 		version: string,
+		isSingleMode: boolean = false,
 	) {
 		sounds = selectedSounds;
 		currentIndex = 0;
 		autoSkip = false;
 		packId = pack;
 		versionId = version;
+		singleMode = isSingleMode;
 	},
 
 	next() {
@@ -94,5 +98,6 @@ export const recordingStore = {
 		autoSkip = false;
 		packId = '';
 		versionId = '';
+		singleMode = false;
 	},
 };

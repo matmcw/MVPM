@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { settingsStore } from '$lib/stores/settings.svelte';
 	import { goto } from '$app/navigation';
+	import { page } from '$app/state';
 	import ThemeToggle from '$lib/components/ThemeToggle.svelte';
 	import HelpButton from '$lib/components/HelpButton.svelte';
 	import { onMount } from 'svelte';
@@ -33,7 +34,7 @@
 
 		<div class="flex items-center gap-1">
 			<button
-				onclick={() => goto('/settings')}
+				onclick={() => page.url.pathname === '/settings' ? history.back() : goto('/settings')}
 				class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
 				title="Settings"
 			>

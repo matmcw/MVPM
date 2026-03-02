@@ -28,12 +28,10 @@
 <button
 	{onclick}
 	class="relative flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all duration-150 text-center min-h-[80px] cursor-pointer
-		{isDir
-			? isRecorded
-				? 'border-success/50 bg-success-light hover:border-success'
-				: 'border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)]'
-			: isRecorded
-				? 'border-success/50 bg-success-light hover:border-success'
+		{isRecorded
+			? 'border-success/40 bg-success/5 hover:border-success/60'
+			: isDir
+				? 'border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)]'
 				: 'border-[var(--border-color)] bg-[var(--bg-secondary)]/50 hover:border-[var(--border-hover)]'
 		}
 		{isSelected ? 'ring-2 ring-selected/50' : ''}"

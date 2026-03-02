@@ -17,6 +17,7 @@
 	let showExitWarning = $state(false);
 	let saving = $state(false);
 	let recordedInSession = $state<Set<string>>(new Set());
+	let progressBarRef = $state<HTMLElement | null>(null);
 
 	const currentSound = $derived(recordingStore.currentSound);
 	const isCurrentRecorded = $derived(
@@ -26,9 +27,22 @@
 			: false
 	);
 
-	const statusColor = $derived(
-		isRecording ? 'bg-recording' : isCurrentRecorded ? 'bg-success' : 'bg-[var(--bg-tertiary)]'
-	);
+	function displayName(name: string): string {
+		let n = name.replace(/\.ogg$/i, '');
+		if (recordingStore.singleMode) n = n.replace(/\d+$/, '');
+		return n;
+	}
+
+	function displayPath(path: string): string {
+		return path.replace('minecraft/sounds/', '').replace(/\.ogg$/i, '');
+	}
+
+	function isSoundRecorded(index: number): boolean {
+		const sound = recordingStore.sounds[index];
+		if (!sound) return false;
+		return recordedInSession.has(sound.path) ||
+			(packStore.currentPack?.recordedSounds.includes(sound.path) ?? false);
+	}
 
 	onMount(async () => {
 		if (recordingStore.sounds.length === 0) {
@@ -71,11 +85,10 @@
 
 			const w = canvasEl.width;
 			const h = canvasEl.height;
-			ctx.fillStyle = 'var(--bg-secondary)';
-			ctx.fillRect(0, 0, w, h);
+			ctx.clearRect(0, 0, w, h);
 
 			ctx.lineWidth = 2;
-			ctx.strokeStyle = isRecording ? '#ef4444' : '#94a3b8';
+			ctx.strokeStyle = isRecording ? '#ef4444' : isCurrentRecorded ? '#22c55e' : '#94a3b8';
 			ctx.beginPath();
 
 			const sliceWidth = w / bufferLength;
@@ -161,7 +174,7 @@
 			// Refresh pack metadata
 			await packStore.refreshCurrentPack();
 
-			// Auto-skip to next unrecorded
+			// Auto-advance to next unrecorded
 			if (recordingStore.autoSkip) {
 				const allRecorded = [
 					...(packStore.currentPack?.recordedSounds ?? []),
@@ -174,6 +187,32 @@
 			}
 		} catch (e) {
 			console.error('Failed to save recording:', e);
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function deleteCurrentRecording() {
+		if (!currentSound) return;
+		saving = true;
+		try {
+			await api.deleteRecording(recordingStore.packId, currentSound.path);
+			if (settingsStore.singleRecordingMode && currentSound.variants) {
+				for (const v of currentSound.variants) {
+					if (v !== currentSound.path) {
+						await api.deleteRecording(recordingStore.packId, v);
+					}
+				}
+			}
+			const newSet = new Set(recordedInSession);
+			newSet.delete(currentSound.path);
+			if (settingsStore.singleRecordingMode && currentSound.variants) {
+				currentSound.variants.forEach((v) => newSet.delete(v));
+			}
+			recordedInSession = newSet;
+			await packStore.refreshCurrentPack();
+		} catch (e) {
+			console.error('Failed to delete recording:', e);
 		} finally {
 			saving = false;
 		}
@@ -206,6 +245,15 @@
 
 	function handleNext() {
 		recordingStore.manualNavigate('next');
+		if (settingsStore.autoPlayOriginal) {
+			setTimeout(playOriginal, 200);
+		}
+	}
+
+	function goToSound(index: number) {
+		if (isRecording) return;
+		recordingStore.setAutoSkip(false);
+		recordingStore.goToIndex(index);
 		if (settingsStore.autoPlayOriginal) {
 			setTimeout(playOriginal, 200);
 		}
@@ -260,119 +308,171 @@
 			}
 		}
 	});
+
+	// Auto-scroll progress bar to active segment
+	$effect(() => {
+		const idx = recordingStore.currentIndex;
+		if (progressBarRef) {
+			const segment = progressBarRef.querySelector(`[data-index="${idx}"]`);
+			if (segment) {
+				segment.scrollIntoView({ inline: 'center', behavior: 'smooth', block: 'nearest' });
+			}
+		}
+	});
 </script>
 
 <svelte:window onkeydown={handleKeyDown} onkeyup={handleKeyUp} />
 
-<div class="flex flex-col h-full items-center justify-center p-6 no-select">
+<div class="flex flex-col h-full" style="user-select: none;">
 	{#if currentSound}
-		<!-- Sound name -->
-		<h2 class="text-xl font-bold mb-1 text-center">{currentSound.name}</h2>
-		<p class="text-sm text-[var(--text-muted)] mb-1">
-			{currentSound.path.replace('minecraft/sounds/', '')}
-		</p>
-		{#if currentSound.soundEvent}
-			<p class="text-xs text-[var(--text-muted)] mb-4">{currentSound.soundEvent}</p>
-		{/if}
-
-		<!-- Progress -->
-		<p class="text-sm text-[var(--text-secondary)] mb-6">{recordingStore.progress}</p>
-
-		<!-- Status indicator -->
-		<div class="w-4 h-4 rounded-full {statusColor} mb-4 transition-colors"></div>
-
-		<!-- Waveform -->
-		<canvas
-			bind:this={canvasEl}
-			width="400"
-			height="80"
-			class="rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] mb-4"
-		></canvas>
-
-		<!-- Timer -->
-		<p class="text-2xl font-mono mb-6 {isRecording ? 'text-recording' : 'text-[var(--text-primary)]'}">
-			{formatTime(recordingTime)}
-		</p>
-
-		<!-- Recording hint -->
-		<p class="text-sm text-[var(--text-muted)] mb-6">
-			{#if isRecording}
-				Release {settingsStore.recordKey} to stop
-			{:else if saving}
-				Saving...
-			{:else}
-				Hold {settingsStore.recordKey} to record
-			{/if}
-		</p>
-
-		<!-- Playback controls -->
-		<div class="flex items-center gap-3 mb-6">
+		<!-- Header: Done button only -->
+		<div class="px-4 py-2 border-b border-[var(--border-color)] bg-[var(--bg-secondary)] flex items-center justify-end">
 			<button
-				onclick={playOriginal}
+				onclick={handleDone}
 				disabled={isRecording}
-				class="px-3 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm disabled:opacity-50"
+				class="px-5 py-2.5 rounded-lg bg-cta text-white hover:bg-cta-hover transition-colors disabled:opacity-50 font-medium"
 			>
-				Play Original
-			</button>
-			<button
-				onclick={playRecording}
-				disabled={isRecording || !isCurrentRecorded}
-				class="px-3 py-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors text-sm disabled:opacity-50"
-			>
-				Play Recording
+				Done
 			</button>
 		</div>
 
-		<!-- Navigation controls -->
-		<div class="flex items-center gap-4 mb-6">
-			<button
-				onclick={handlePrevious}
-				disabled={recordingStore.currentIndex === 0 || isRecording}
-				class="p-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-50"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="15 18 9 12 15 6"/>
-				</svg>
-			</button>
+		<!-- Center content -->
+		<div class="flex-1 overflow-auto flex flex-col items-center justify-center px-8 py-6">
+			<!-- Sound info -->
+			<h2 class="text-3xl font-bold leading-tight text-center mb-1">{displayName(currentSound.name)}</h2>
+			<p class="text-sm text-[var(--text-muted)] text-center mb-6">
+				{displayPath(currentSound.path)}
+				{#if currentSound.soundEvent}
+					&middot; {currentSound.soundEvent}
+				{/if}
+			</p>
 
-			<!-- Auto-skip toggle -->
-			<label class="flex items-center gap-2 text-sm cursor-pointer">
-				<input
-					type="checkbox"
-					checked={recordingStore.autoSkip}
-					onchange={(e) => recordingStore.setAutoSkip(e.currentTarget.checked)}
-					class="rounded"
-				/>
-				Auto-skip to next unrecorded
-			</label>
+			<!-- Waveform -->
+			<canvas
+				bind:this={canvasEl}
+				width="800"
+				height="200"
+				class="w-full max-w-3xl rounded-lg border border-[var(--border-color)] bg-[var(--bg-secondary)] mb-6"
+			></canvas>
 
-			<button
-				onclick={handleNext}
-				disabled={recordingStore.currentIndex >= recordingStore.total - 1 || isRecording}
-				class="p-2 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-50"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-					<polyline points="9 18 15 12 9 6"/>
-				</svg>
-			</button>
+			<!-- Timer -->
+			<p class="text-4xl font-mono mb-3 {isRecording ? 'text-recording' : 'text-[var(--text-primary)]'}">
+				{formatTime(recordingTime)}
+			</p>
+
+			<!-- Recording hint -->
+			<p class="text-base text-[var(--text-muted)] mb-6">
+				{#if isRecording}
+					Release {settingsStore.recordKey} to stop
+				{:else if saving}
+					Saving...
+				{:else}
+					Hold {settingsStore.recordKey} to record
+				{/if}
+			</p>
+
+			<!-- Playback controls -->
+			<div class="flex items-center gap-3">
+				<button
+					onclick={playOriginal}
+					disabled={isRecording}
+					class="px-5 py-3 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors text-base disabled:opacity-50"
+				>
+					Play Original
+				</button>
+				<button
+					onclick={playRecording}
+					disabled={isRecording || !isCurrentRecorded}
+					class="px-5 py-3 rounded-lg border border-[var(--border-color)] hover:bg-[var(--bg-tertiary)] transition-colors text-base disabled:opacity-50"
+				>
+					Play Recording
+				</button>
+				<button
+					onclick={deleteCurrentRecording}
+					disabled={isRecording || !isCurrentRecorded || saving}
+					class="px-5 py-3 rounded-lg border border-red-400/30 text-red-400 hover:text-red-300 hover:bg-red-400/10 transition-colors text-base disabled:opacity-30"
+				>
+					Delete
+				</button>
+			</div>
 		</div>
 
-		<!-- Done button -->
-		<button
-			onclick={handleDone}
-			disabled={isRecording}
-			class="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50"
-		>
-			Done
-		</button>
+		<!-- Bottom section -->
+		<div class="border-t border-[var(--border-color)] bg-[var(--bg-secondary)]">
+			<!-- Navigation + Auto-Advance with spanning arrows -->
+			<div class="flex items-center px-2 py-2">
+				<button
+					onclick={handlePrevious}
+					disabled={recordingStore.currentIndex === 0 || isRecording}
+					class="px-4 self-stretch rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-30 flex items-center"
+					aria-label="Previous sound"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="15 18 9 12 15 6"/>
+					</svg>
+				</button>
+
+				<div class="flex-1 flex flex-col items-center gap-1 py-1">
+					<span class="text-sm text-[var(--text-secondary)]">{recordingStore.progress}</span>
+					<div class="flex items-center gap-2">
+						<button
+							type="button"
+							onclick={() => recordingStore.setAutoSkip(!recordingStore.autoSkip)}
+							disabled={isRecording}
+							class="w-9 h-5 rounded-full transition-colors relative shrink-0 disabled:opacity-50 {recordingStore.autoSkip ? 'bg-primary' : 'bg-[var(--bg-tertiary)]'}"
+						>
+							<span class="block h-4 w-4 rounded-full bg-white shadow transition-transform absolute top-[2px] left-[2px] {recordingStore.autoSkip ? 'translate-x-full' : ''}"></span>
+						</button>
+						<span class="text-xs text-[var(--text-muted)]">Auto-Advance</span>
+					</div>
+				</div>
+
+				<button
+					onclick={handleNext}
+					disabled={recordingStore.currentIndex >= recordingStore.total - 1 || isRecording}
+					class="px-4 self-stretch rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-30 flex items-center"
+					aria-label="Next sound"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<polyline points="9 18 15 12 9 6"/>
+					</svg>
+				</button>
+			</div>
+
+			<!-- Progress bar -->
+			<div class="overflow-x-auto" bind:this={progressBarRef}>
+				<div class="flex" style="min-width: fit-content;">
+					{#each recordingStore.sounds as sound, i (sound.path)}
+						<button
+							data-index={i}
+							class="h-8 min-w-[20px] flex-1 relative group transition-colors border-r border-[var(--border-color)] last:border-r-0
+								{i === recordingStore.currentIndex ? 'ring-1 ring-inset ring-white/40' : ''}"
+							style:background-color={
+								i === recordingStore.currentIndex && isRecording ? '#ef4444'
+								: isSoundRecorded(i) ? '#22c55e'
+								: 'var(--bg-tertiary)'
+							}
+							onclick={() => goToSound(i)}
+						>
+							<!-- Tooltip -->
+							<span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[10px] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+								{displayPath(sound.path)}
+							</span>
+						</button>
+					{/each}
+				</div>
+			</div>
+		</div>
 	{:else}
-		<p class="text-[var(--text-muted)]">No sounds to record.</p>
-		<button
-			onclick={() => history.back()}
-			class="mt-4 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors"
-		>
-			Go Back
-		</button>
+		<div class="flex flex-col h-full items-center justify-center p-6">
+			<p class="text-[var(--text-muted)]">No sounds to record.</p>
+			<button
+				onclick={() => history.back()}
+				class="mt-4 px-4 py-2 rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors"
+			>
+				Go Back
+			</button>
+		</div>
 	{/if}
 </div>
 
