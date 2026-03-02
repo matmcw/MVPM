@@ -7,8 +7,12 @@ MVPM is a portable desktop app that lets you record your own voice and sounds to
 - Browse every sound in any Minecraft Java Edition version
 - Record your voice or any sound to replace individual Minecraft sounds
 - Tile grid editor with categories, search, breadcrumb navigation, and multi-select
-- Single recording mode: record once per sound event and duplicate to all variants
+- Recording screen with waveform visualizer, progress bar, and Auto-Advance
+- Delete recordings to revert individual sounds back to the Minecraft default
+- Single recording mode: record once per sound event and duplicate to all variants (hides variant duplicates in the grid and recording screen)
+- Native Rust audio encoding (WAV to OGG Vorbis) — no external binaries required
 - Automatically downloads sound data from official Mojang asset API
+- Light and dark themes
 - Fully portable — runs from its own folder with no registry or AppData usage
 
 ## Installation

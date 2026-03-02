@@ -75,7 +75,7 @@
 	{/if}
 
 	<span class="text-xs leading-tight break-all max-w-full {isRecorded ? 'text-success' : 'text-[var(--text-primary)]'}">
-		{node.name}
+		{node.name.replace(/\.ogg$/i, '')}
 	</span>
 	{#if isDir && soundCount !== undefined}
 		<span class="text-[10px] text-[var(--text-muted)] -mt-0.5">({soundCount})</span>

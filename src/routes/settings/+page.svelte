@@ -57,7 +57,7 @@
 <div class="max-w-2xl mx-auto p-6">
 	<div class="flex items-center gap-3 mb-6">
 		<button
-			onclick={() => goto('/')}
+			onclick={() => history.back()}
 			class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

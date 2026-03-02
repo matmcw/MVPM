@@ -33,7 +33,7 @@ The pack IS a valid Minecraft resource pack from the moment it's created. Each r
 Minecraft automatically uses resource pack files that match default file paths. Simply placing an .ogg file at `assets/minecraft/sounds/entity/creeper/fuse.ogg` overrides that default sound. No custom sounds.json is needed in the pack.
 
 ### Single Recording Mode (Setting, OFF by default)
-When enabled, the user records once per sound event and the recording is **duplicated to all variant filenames** for that event. Example: `entity.cow.ambient` has `idle1.ogg`, `idle2.ogg`, `idle3.ogg` → record once, file is copied to all 3 paths. This ensures the custom sound plays 100% of the time (not 1/3). This approach was chosen over sounds.json `"replace": true` so that users can later turn the setting off and re-record individual variants.
+When enabled, the user records once per sound event and the recording is **duplicated to all variant filenames** for that event. Example: `entity.cow.ambient` has `idle1.ogg`, `idle2.ogg`, `idle3.ogg` → record once, file is copied to all 3 paths. This ensures the custom sound plays 100% of the time (not 1/3). This approach was chosen over sounds.json `"replace": true` so that users can later turn the setting off and re-record individual variants. When single recording mode is ON, variant duplicates are hidden in both the tile grid and the recording screen — e.g., `hurt1`, `hurt2`, `hurt3` appear as a single `hurt` entry.
 
 ### Fully Portable
 The app runs entirely from its own folder. No registry entries, no AppData usage. Can be copied to USB and run anywhere. All data (settings, versions, packs) lives within the app folder.
@@ -214,40 +214,38 @@ MVPM/
 ### 4. Recording Workflow (`/record`)
 
 **Layout:**
-- Sound name (large text)
-- Progress counter ("Recording 3 of 47")
-- Simple waveform visualizer
+- Sound name + path centered above waveform (large text, .ogg extension hidden)
+- Color-coded waveform visualizer (gray=idle, red=recording, green=recorded)
 - Timer with milliseconds
-- Color-coded indicator:
-  - **Gray** = waiting for user to record
-  - **Red** = actively recording
-  - **Green** = this sound already has a recording (visible when navigating back to review)
+- Playback controls: Original, Recording, Delete
+- Compact navigation island: prev/next arrows flanking "Recording X of Y" counter + Auto-Advance toggle
+- Progress bar: clickable segments for each sound (green=recorded, gray=unrecorded, red=currently recording), with hover tooltips showing sound name and path
 
 **Auto-play:** Original sound plays automatically when entering each recording step (configurable in settings).
 
 **Controls (visible buttons):**
 - Play original sound (replay button)
 - Play my recording (playback of saved recording, if one exists)
-- Re-record this sound
+- Delete recording (reverts to original Minecraft sound)
 - Previous sound (arrow ←)
 - Next/Skip sound (arrow →)
 - Done/Exit recording button
-- **"Automatically skip to next unrecorded sound" toggle** (on the recording screen itself, NOT in settings)
+- **"Auto-Advance" toggle** (on the recording screen itself, NOT in settings)
 
 **Recording flow:**
 1. Original sound auto-plays (if setting enabled)
 2. User holds spacebar (configurable key) → recording starts (red indicator, waveform active, timer counting)
 3. User releases spacebar → recording stops, WAV saved, converted to OGG natively in Rust, file placed in pack directory
-4. If auto-skip toggle **ON**: automatically advance to next **UNRECORDED** sound (skips already-recorded ones)
-5. If auto-skip toggle **OFF**: stay on current sound, user manually clicks arrows to navigate
+4. If Auto-Advance toggle **ON**: automatically advance to next **UNRECORDED** sound (skips already-recorded ones). If all sounds are recorded, advances to the next sound sequentially.
+5. If Auto-Advance toggle **OFF**: stay on current sound, user manually clicks arrows to navigate
 
 **Toggle behavior:**
-- If auto-skip is ON and user manually clicks a prev/next arrow, **the toggle automatically turns OFF** (user is now manually navigating)
+- If Auto-Advance is ON and user manually clicks a prev/next arrow, **the toggle automatically turns OFF** (user is now manually navigating)
 
 **Done button behavior:**
 - If any selected sounds are still unrecorded when user clicks Done:
   - Warning: "One or more selected sounds were skipped. Do you want to record them now?"
-  - **"Yes"** → jump to first unrecorded sound, auto-skip toggle turns ON, iterate through unrecorded sounds
+  - **"Yes"** → jump to first unrecorded sound, Auto-Advance toggle turns ON, iterate through unrecorded sounds
   - **"Skip"** → return to tile grid (unrecorded sounds remain not-green)
 - If all sounds recorded: return directly to tile grid
 
@@ -394,7 +392,7 @@ npm run check                  # TypeScript/Svelte type checking
 5. Tile grid: navigate categories via single-click, breadcrumbs work, search finds sounds globally
 6. Selection: checkbox selects, drag-select works, category checkbox selects all children recursively
 7. Record a sound: hold spacebar → release → OGG file appears at correct path in pack directory
-8. Auto-skip toggle: ON advances to next unrecorded sound, clicking arrow turns toggle OFF
+8. Auto-Advance toggle: ON advances to next unrecorded sound (or next sound if all recorded), clicking arrow turns toggle OFF
 9. Done button: warns about unrecorded sounds, "Yes" loops through them, "Skip" returns to grid
 10. Re-record warning appears when selecting already-recorded sounds
 11. Single recording mode: one recording duplicated to all variant filenames

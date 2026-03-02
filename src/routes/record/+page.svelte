@@ -56,10 +56,6 @@
 		} catch (e) {
 			console.error('Failed to init recording:', e);
 		}
-
-		if (settingsStore.autoPlayOriginal && currentSound) {
-			playOriginal();
-		}
 	});
 
 	onDestroy(() => {
@@ -174,13 +170,16 @@
 			// Refresh pack metadata
 			await packStore.refreshCurrentPack();
 
-			// Auto-advance to next unrecorded
+			// Auto-advance to next unrecorded (or next sound if all recorded)
 			if (recordingStore.autoSkip) {
 				const allRecorded = [
 					...(packStore.currentPack?.recordedSounds ?? []),
 					...recordedInSession,
 				];
-				recordingStore.nextUnrecorded(allRecorded);
+				const found = recordingStore.nextUnrecorded(allRecorded);
+				if (!found) {
+					recordingStore.next();
+				}
 				if (settingsStore.autoPlayOriginal) {
 					setTimeout(playOriginal, 200);
 				}
@@ -399,54 +398,56 @@
 
 		<!-- Bottom section -->
 		<div class="border-t border-[var(--border-color)] bg-[var(--bg-secondary)]">
-			<!-- Navigation + Auto-Advance with spanning arrows -->
-			<div class="flex items-center px-2 py-2">
-				<button
-					onclick={handlePrevious}
-					disabled={recordingStore.currentIndex === 0 || isRecording}
-					class="px-4 self-stretch rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-30 flex items-center"
-					aria-label="Previous sound"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<polyline points="15 18 9 12 15 6"/>
-					</svg>
-				</button>
+			<!-- Navigation + Auto-Advance compact island -->
+			<div class="flex items-center justify-center px-2 py-2">
+				<div class="flex items-center">
+					<button
+						onclick={handlePrevious}
+						disabled={recordingStore.currentIndex === 0 || isRecording}
+						class="px-3 self-stretch rounded-l-lg hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-30 flex items-center"
+						aria-label="Previous sound"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="15 18 9 12 15 6"/>
+						</svg>
+					</button>
 
-				<div class="flex-1 flex flex-col items-center gap-1 py-1">
-					<span class="text-sm text-[var(--text-secondary)]">{recordingStore.progress}</span>
-					<div class="flex items-center gap-2">
-						<button
-							type="button"
-							onclick={() => recordingStore.setAutoSkip(!recordingStore.autoSkip)}
-							disabled={isRecording}
-							class="w-9 h-5 rounded-full transition-colors relative shrink-0 disabled:opacity-50 {recordingStore.autoSkip ? 'bg-primary' : 'bg-[var(--bg-tertiary)]'}"
-						>
-							<span class="block h-4 w-4 rounded-full bg-white shadow transition-transform absolute top-[2px] left-[2px] {recordingStore.autoSkip ? 'translate-x-full' : ''}"></span>
-						</button>
-						<span class="text-xs text-[var(--text-muted)]">Auto-Advance</span>
+					<div class="flex flex-col items-center gap-1 py-1 px-6">
+						<span class="text-sm text-[var(--text-secondary)]">{recordingStore.progress}</span>
+						<div class="flex items-center gap-2">
+							<button
+								type="button"
+								onclick={() => recordingStore.setAutoSkip(!recordingStore.autoSkip)}
+								disabled={isRecording}
+								class="w-9 h-5 rounded-full transition-colors relative shrink-0 disabled:opacity-50 {recordingStore.autoSkip ? 'bg-primary' : 'bg-[var(--bg-tertiary)]'}"
+							>
+								<span class="block h-4 w-4 rounded-full bg-white shadow transition-transform absolute top-[2px] left-[2px] {recordingStore.autoSkip ? 'translate-x-full' : ''}"></span>
+							</button>
+							<span class="text-xs text-[var(--text-muted)]">Auto-Advance</span>
+						</div>
 					</div>
-				</div>
 
-				<button
-					onclick={handleNext}
-					disabled={recordingStore.currentIndex >= recordingStore.total - 1 || isRecording}
-					class="px-4 self-stretch rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-30 flex items-center"
-					aria-label="Next sound"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<polyline points="9 18 15 12 9 6"/>
-					</svg>
-				</button>
+					<button
+						onclick={handleNext}
+						disabled={recordingStore.currentIndex >= recordingStore.total - 1 || isRecording}
+						class="px-3 self-stretch rounded-r-lg hover:bg-[var(--bg-tertiary)] transition-colors disabled:opacity-30 flex items-center"
+						aria-label="Next sound"
+					>
+						<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+							<polyline points="9 18 15 12 9 6"/>
+						</svg>
+					</button>
+				</div>
 			</div>
 
 			<!-- Progress bar -->
 			<div class="overflow-x-auto" bind:this={progressBarRef}>
-				<div class="flex" style="min-width: fit-content;">
+				<div class="flex border border-[var(--border-color)] rounded overflow-hidden" style="min-width: fit-content;">
 					{#each recordingStore.sounds as sound, i (sound.path)}
 						<button
 							data-index={i}
-							class="h-8 min-w-[20px] flex-1 relative group transition-colors border-r border-[var(--border-color)] last:border-r-0
-								{i === recordingStore.currentIndex ? 'ring-1 ring-inset ring-white/40' : ''}"
+							class="h-8 min-w-[20px] flex-1 relative group transition-all cursor-pointer border-r border-[var(--border-color)] last:border-r-0 hover:brightness-125
+								{i === recordingStore.currentIndex ? 'ring-2 ring-inset ring-white/50' : ''}"
 							style:background-color={
 								i === recordingStore.currentIndex && isRecording ? '#ef4444'
 								: isSoundRecorded(i) ? '#22c55e'
@@ -456,7 +457,7 @@
 						>
 							<!-- Tooltip -->
 							<span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[10px] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-								{displayPath(sound.path)}
+								{displayName(sound.name)} &middot; {displayPath(sound.path)}
 							</span>
 						</button>
 					{/each}
