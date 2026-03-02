@@ -156,6 +156,10 @@ export async function getPackSoundPath(packId: string, soundPath: string): Promi
 	return invoke('get_pack_sound_path', { packId, soundPath });
 }
 
+export async function openPackFolder(packId: string): Promise<void> {
+	return invoke('open_pack_folder', { packId });
+}
+
 // --- Recording ---
 
 export async function saveRecording(

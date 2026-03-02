@@ -34,6 +34,7 @@ pub fn run() {
 			commands::packs::change_pack_version,
 			commands::packs::get_recorded_sounds,
 			commands::packs::get_pack_sound_path,
+			commands::packs::open_pack_folder,
 			// Recording
 			commands::recording::save_recording,
 			commands::recording::delete_recording,

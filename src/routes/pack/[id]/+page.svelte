@@ -23,8 +23,31 @@
 	});
 
 	const recorded = $derived(packStore.currentPack?.recordedSounds ?? []);
-	const totalSounds = $derived(soundsStore.getTotalSoundCount());
-	const recordedCount = $derived(recorded.length);
+	const totalSounds = $derived(
+		settingsStore.singleRecordingMode
+			? soundsStore.getDedupedSoundCount()
+			: soundsStore.getTotalSoundCount()
+	);
+	const recordedCount = $derived.by(() => {
+		if (!settingsStore.singleRecordingMode) return recorded.length;
+		const allFiles = soundsStore.flattenAllFiles();
+		const eventFiles = new Map<string, string[]>();
+		let standaloneCount = 0;
+		for (const f of allFiles) {
+			if (!f.soundEvent) {
+				if (recorded.includes(f.path)) standaloneCount++;
+			} else {
+				const arr = eventFiles.get(f.soundEvent) ?? [];
+				arr.push(f.path);
+				eventFiles.set(f.soundEvent, arr);
+			}
+		}
+		let eventCount = 0;
+		for (const paths of eventFiles.values()) {
+			if (paths.some((p) => recorded.includes(p))) eventCount++;
+		}
+		return standaloneCount + eventCount;
+	});
 	const selectedCount = $derived(soundsStore.selectedPaths.size);
 
 	const displayNodes = $derived.by(() => {

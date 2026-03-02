@@ -139,6 +139,25 @@ export const soundsStore = {
 	getTotalSoundCount(): number {
 		return flattenFiles(soundTree).length;
 	},
+
+	getDedupedSoundCount(): number {
+		const files = flattenFiles(soundTree);
+		const seenEvents = new Set<string>();
+		let count = 0;
+		for (const f of files) {
+			if (!f.soundEvent) {
+				count++;
+			} else if (!seenEvents.has(f.soundEvent)) {
+				seenEvents.add(f.soundEvent);
+				count++;
+			}
+		}
+		return count;
+	},
+
+	flattenAllFiles(): SoundNode[] {
+		return flattenFiles(soundTree);
+	},
 };
 
 function collectFiles(nodes: SoundNode[]): SoundNode[] {

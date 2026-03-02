@@ -438,3 +438,16 @@ pub async fn get_pack_sound_path(
 		Ok(None)
 	}
 }
+
+#[tauri::command]
+pub async fn open_pack_folder(pack_id: String) -> Result<(), String> {
+	let dir = pack_dir(&pack_id)?;
+	if !dir.exists() {
+		return Err("Pack folder not found.".to_string());
+	}
+	std::process::Command::new("explorer")
+		.arg(&dir)
+		.spawn()
+		.map_err(|e| format!("Failed to open folder: {}", e))?;
+	Ok(())
+}

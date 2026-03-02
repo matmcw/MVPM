@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { PackMeta } from '$lib/utils/api';
+	import { openPackFolder } from '$lib/utils/api';
 	import { goto } from '$app/navigation';
 	import { convertFileSrc } from '@tauri-apps/api/core';
 
@@ -60,6 +61,15 @@
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
 				<rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
 				<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+			</svg>
+		</button>
+		<button
+			onclick={() => openPackFolder(pack.id)}
+			class="p-2 rounded-lg hover:bg-[var(--bg-tertiary)] transition-colors"
+			title="Open pack folder"
+		>
+			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+				<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
 			</svg>
 		</button>
 		<button
