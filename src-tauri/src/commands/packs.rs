@@ -130,6 +130,35 @@ pub async fn list_packs() -> Result<Vec<PackMeta>, String> {
 	Ok(packs)
 }
 
+fn validate_pack_name(name: &str) -> Result<(), String> {
+	let trimmed = name.trim();
+	if trimmed.is_empty() {
+		return Err("Pack name cannot be empty.".to_string());
+	}
+	let invalid_chars = ['\\', '/', ':', '*', '?', '"', '<', '>', '|'];
+	for ch in invalid_chars {
+		if trimmed.contains(ch) {
+			return Err(format!("Pack name cannot contain '{}'.", ch));
+		}
+	}
+	let reserved = [
+		"CON", "PRN", "AUX", "NUL", "COM1", "COM2", "COM3", "COM4", "COM5",
+		"COM6", "COM7", "COM8", "COM9", "LPT1", "LPT2", "LPT3", "LPT4",
+		"LPT5", "LPT6", "LPT7", "LPT8", "LPT9",
+	];
+	let upper = trimmed.to_uppercase();
+	if reserved
+		.iter()
+		.any(|r| upper == *r || upper.starts_with(&format!("{}.", r)))
+	{
+		return Err("This name is reserved by Windows.".to_string());
+	}
+	if trimmed.ends_with('.') || trimmed.ends_with(' ') {
+		return Err("Pack name cannot end with a period or space.".to_string());
+	}
+	Ok(())
+}
+
 #[tauri::command]
 pub async fn create_pack(
 	name: String,
@@ -137,14 +166,20 @@ pub async fn create_pack(
 	version_id: String,
 	icon_path: Option<String>,
 ) -> Result<PackMeta, String> {
+	validate_pack_name(&name)?;
+	let trimmed_name = name.trim().to_string();
+
 	// Validate unique name
 	let existing = list_packs().await?;
-	if existing.iter().any(|p| p.name.eq_ignore_ascii_case(&name)) {
+	if existing
+		.iter()
+		.any(|p| p.name.eq_ignore_ascii_case(&trimmed_name))
+	{
 		return Err("A pack with this name already exists.".to_string());
 	}
 
 	let pack_format = get_pack_format_for_version(&version_id)?;
-	let id = uuid::Uuid::new_v4().to_string();
+	let id = trimmed_name.clone();
 	let dir = packs_dir()?.join(&id);
 
 	// Create directory structure
@@ -180,7 +215,7 @@ pub async fn create_pack(
 	// Create pack_meta.json
 	let mut meta = PackMeta {
 		id: id.clone(),
-		name,
+		name: trimmed_name,
 		description,
 		version_id,
 		pack_format,
@@ -212,28 +247,40 @@ pub async fn update_pack(
 	icon_path: Option<String>,
 ) -> Result<PackMeta, String> {
 	let mut meta = load_pack_meta(&pack_id)?;
+	let mut current_id = pack_id.clone();
 
 	if let Some(ref new_name) = name {
+		validate_pack_name(new_name)?;
+		let trimmed = new_name.trim().to_string();
 		// Validate unique name (excluding this pack)
 		let existing = list_packs().await?;
 		if existing
 			.iter()
-			.any(|p| p.id != pack_id && p.name.eq_ignore_ascii_case(new_name))
+			.any(|p| p.id != pack_id && p.name.eq_ignore_ascii_case(&trimmed))
 		{
 			return Err("A pack with this name already exists.".to_string());
 		}
-		meta.name = new_name.clone();
+		// Rename folder if name changed
+		if trimmed != pack_id {
+			let old_dir = pack_dir(&pack_id)?;
+			let new_dir = packs_dir()?.join(&trimmed);
+			std::fs::rename(&old_dir, &new_dir)
+				.map_err(|e| format!("Failed to rename pack folder: {}", e))?;
+			current_id = trimmed.clone();
+			meta.id = trimmed.clone();
+		}
+		meta.name = trimmed;
 	}
 
 	if let Some(ref new_desc) = description {
 		meta.description = new_desc.clone();
-		write_pack_mcmeta(&pack_id, meta.pack_format, new_desc)?;
+		write_pack_mcmeta(&current_id, meta.pack_format, new_desc)?;
 	}
 
 	if let Some(ref src) = icon_path {
 		let src_path = std::path::Path::new(src);
 		if src_path.exists() {
-			let dest = pack_dir(&pack_id)?.join("pack.png");
+			let dest = pack_dir(&current_id)?.join("pack.png");
 			std::fs::copy(src_path, &dest)
 				.map_err(|e| format!("Failed to copy icon: {}", e))?;
 			meta.has_icon = true;
@@ -247,14 +294,20 @@ pub async fn update_pack(
 
 #[tauri::command]
 pub async fn duplicate_pack(pack_id: String, new_name: String) -> Result<PackMeta, String> {
+	validate_pack_name(&new_name)?;
+	let trimmed_name = new_name.trim().to_string();
+
 	// Validate unique name
 	let existing = list_packs().await?;
-	if existing.iter().any(|p| p.name.eq_ignore_ascii_case(&new_name)) {
+	if existing
+		.iter()
+		.any(|p| p.name.eq_ignore_ascii_case(&trimmed_name))
+	{
 		return Err("A pack with this name already exists.".to_string());
 	}
 
 	let source_dir = pack_dir(&pack_id)?;
-	let new_id = uuid::Uuid::new_v4().to_string();
+	let new_id = trimmed_name.clone();
 	let dest_dir = packs_dir()?.join(&new_id);
 
 	// Deep copy directory
@@ -263,7 +316,7 @@ pub async fn duplicate_pack(pack_id: String, new_name: String) -> Result<PackMet
 	// Update metadata
 	let mut meta = load_pack_meta(&new_id)?;
 	meta.id = new_id.clone();
-	meta.name = new_name;
+	meta.name = trimmed_name;
 	meta.created_at = chrono::Utc::now().to_rfc3339();
 	save_pack_meta(&meta)?;
 

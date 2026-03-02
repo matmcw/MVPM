@@ -4,16 +4,20 @@
 
 	let name = $state(createWizardStore.name);
 	let description = $state(createWizardStore.description);
-	let nameError = $state('');
 
 	const version = $derived(createWizardStore.version ?? '');
 
+	const invalidChars = /[\\/:*?"<>|]/;
+	const nameError = $derived.by(() => {
+		const trimmed = name.trim();
+		if (!trimmed) return '';
+		if (invalidChars.test(trimmed)) return 'Name cannot contain \\ / : * ? " < > |';
+		if (trimmed.endsWith('.')) return 'Name cannot end with a period.';
+		return '';
+	});
+
 	function handleNext() {
-		if (!name.trim()) {
-			nameError = 'Pack name is required.';
-			return;
-		}
-		nameError = '';
+		if (!name.trim() || nameError) return;
 		createWizardStore.name = name.trim();
 		createWizardStore.description = description.trim();
 		goto('/create/icon');
@@ -63,7 +67,7 @@
 		</button>
 		<button
 			onclick={handleNext}
-			disabled={!name.trim() || !description.trim()}
+			disabled={!name.trim() || !description.trim() || !!nameError}
 			class="px-6 py-2 rounded-lg bg-primary text-white hover:bg-primary-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
 		>
 			Next

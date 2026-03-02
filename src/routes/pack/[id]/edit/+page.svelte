@@ -50,8 +50,8 @@
 		saving = true;
 		error = '';
 		try {
-			await packStore.updatePack(packId, name.trim(), description.trim());
-			goto(`/pack/${packId}`);
+			const updated = await packStore.updatePack(packId, name.trim(), description.trim());
+			goto(`/pack/${updated.id}`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		} finally {
