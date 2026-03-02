@@ -12,14 +12,15 @@
 	let { pack, onduplicate, ondelete }: Props = $props();
 
 	const recordedCount = $derived(pack.recordedSounds.length);
+	const iconBust = Date.now();
 </script>
 
 <div class="relative flex items-center gap-4 p-4 rounded-lg border border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)] transition-colors group overflow-hidden">
 	{#if pack.iconPath}
 		<img
-			src={convertFileSrc(pack.iconPath)}
+			src={convertFileSrc(pack.iconPath) + '?v=' + iconBust}
 			alt=""
-			class="absolute right-2 top-1/2 -translate-y-1/2 h-full max-h-16 w-auto opacity-[0.12] object-contain pointer-events-none"
+			class="absolute left-0 top-0 h-full aspect-square object-cover opacity-15 pointer-events-none"
 		/>
 	{/if}
 	<!-- Click area for opening pack -->
@@ -63,7 +64,7 @@
 		</button>
 		<button
 			onclick={() => ondelete(pack)}
-			class="p-2 rounded-lg hover:bg-danger/10 text-[var(--text-muted)] hover:text-danger transition-colors"
+			class="p-2 rounded-lg hover:bg-danger/10 text-danger transition-colors"
 			title="Delete pack"
 		>
 			<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">

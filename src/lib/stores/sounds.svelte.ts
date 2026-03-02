@@ -8,6 +8,31 @@ let searchQuery = $state('');
 let searchResults = $state<SoundNode[]>([]);
 let loading = $state(false);
 
+// Proper $derived ensures Svelte 5 tracks soundTree + currentPath dependencies
+const _currentNodes = $derived.by(() => {
+	let nodes = soundTree;
+	for (const segment of currentPath) {
+		const dir = nodes.find((n) => n.name === segment && n.nodeType === 'directory');
+		if (dir?.children) {
+			nodes = dir.children;
+		} else {
+			break;
+		}
+	}
+	return nodes;
+});
+
+const _breadcrumbs = $derived.by(() => {
+	const crumbs: { name: string; path: string[] }[] = [];
+	for (let i = 0; i < currentPath.length; i++) {
+		crumbs.push({
+			name: currentPath[i],
+			path: currentPath.slice(0, i + 1),
+		});
+	}
+	return crumbs;
+});
+
 export const soundsStore = {
 	get tree() { return soundTree; },
 	get currentPath() { return currentPath; },
@@ -16,29 +41,9 @@ export const soundsStore = {
 	get searchResults() { return searchResults; },
 	get loading() { return loading; },
 
-	get currentNodes(): SoundNode[] {
-		let nodes = soundTree;
-		for (const segment of currentPath) {
-			const dir = nodes.find((n) => n.name === segment && n.nodeType === 'directory');
-			if (dir?.children) {
-				nodes = dir.children;
-			} else {
-				break;
-			}
-		}
-		return nodes;
-	},
+	get currentNodes() { return _currentNodes; },
 
-	get breadcrumbs(): { name: string; path: string[] }[] {
-		const crumbs: { name: string; path: string[] }[] = [];
-		for (let i = 0; i < currentPath.length; i++) {
-			crumbs.push({
-				name: currentPath[i],
-				path: currentPath.slice(0, i + 1),
-			});
-		}
-		return crumbs;
-	},
+	get breadcrumbs() { return _breadcrumbs; },
 
 	async loadTree(versionId: string, packId?: string) {
 		loading = true;
@@ -89,13 +94,21 @@ export const soundsStore = {
 
 	selectNodes(nodes: SoundNode[]) {
 		const newSelected = new Set(selectedPaths);
+		// Collect all file paths from the drag-selected nodes
+		const allPaths: string[] = [];
 		for (const node of nodes) {
 			if (node.nodeType === 'file') {
-				newSelected.add(node.path);
+				allPaths.push(node.path);
 			} else if (node.children) {
-				const allFiles = collectFiles(node.children);
-				allFiles.forEach((f) => newSelected.add(f.path));
+				collectFiles(node.children).forEach((f) => allPaths.push(f.path));
 			}
+		}
+		// If all are already selected, unselect them (toggle off)
+		const allAlreadySelected = allPaths.length > 0 && allPaths.every((p) => newSelected.has(p));
+		if (allAlreadySelected) {
+			allPaths.forEach((p) => newSelected.delete(p));
+		} else {
+			allPaths.forEach((p) => newSelected.add(p));
 		}
 		selectedPaths = newSelected;
 	},

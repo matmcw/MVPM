@@ -445,14 +445,12 @@ fn insert_into_tree(
 		// This is a directory segment
 		let dir_name = parts[0];
 		let dir_path = {
-			let prefix = "minecraft/sounds/";
-			let rel = full_path.strip_prefix(prefix).unwrap_or(full_path);
-			let idx: usize = parts[..1]
-				.iter()
-				.map(|p| p.len())
-				.sum::<usize>()
-				+ 0; // just the first segment
-			format!("{}{}", prefix, &rel[..idx])
+			// Compute directory path by trimming the remaining segments from full_path
+			let remaining_len: usize =
+				parts[1..].iter().map(|p| p.len()).sum::<usize>() + (parts.len() - 1);
+			full_path[..full_path.len() - remaining_len]
+				.trim_end_matches('/')
+				.to_string()
 		};
 
 		// Find or create directory node

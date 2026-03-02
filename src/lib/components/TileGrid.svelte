@@ -9,20 +9,28 @@
 		selectedPaths: Set<string>;
 		showPath?: boolean;
 		showBackTile?: boolean;
+		showClearSearch?: boolean;
 		ontileclick: (node: SoundNode) => void;
 		ontilecheck: (node: SoundNode, checked: boolean) => void;
 		ondragselect: (nodes: SoundNode[]) => void;
 		onbackclick?: () => void;
+		onclearsearch?: () => void;
 	}
 
-	let { nodes, recordedSounds, selectedPaths, showPath, showBackTile, ontileclick, ontilecheck, ondragselect, onbackclick }: Props = $props();
+	let { nodes, recordedSounds, selectedPaths, showPath, showBackTile, showClearSearch, ontileclick, ontilecheck, ondragselect, onbackclick, onclearsearch }: Props = $props();
 
-	let isDragging = $state(false);
-	let dragPending = $state(false);
-	let dragStartX = $state(0);
-	let dragStartY = $state(0);
-	let dragCurrentX = $state(0);
-	let dragCurrentY = $state(0);
+	// Plain JS variables for drag tracking — NOT reactive to avoid triggering
+	// Svelte re-renders during mousedown/mouseup/click event chains
+	let _isDragging = false;
+	let _dragPending = false;
+	let _dragJustEnded = false; // suppresses post-drag click; cleared on next mousedown
+	let _startX = 0;
+	let _startY = 0;
+	let _currentX = 0;
+	let _currentY = 0;
+
+	// Only this one is reactive — needed for rendering the selection box overlay
+	let selectionBox = $state<{ left: number; top: number; width: number; height: number } | null>(null);
 	let gridRef = $state<HTMLElement | null>(null);
 
 	function isTileRecorded(node: SoundNode): boolean {
@@ -66,39 +74,59 @@
 		if (e.button !== 0) return;
 		if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
 
-		dragPending = true;
-		dragStartX = e.clientX;
-		dragStartY = e.clientY;
-		dragCurrentX = e.clientX;
-		dragCurrentY = e.clientY;
+		// New mousedown = new user action → clear the post-drag flag.
+		// This is what makes the flag impossible to get stuck: every
+		// mousedown clears it, regardless of what element was clicked.
+		_dragJustEnded = false;
+		_dragPending = true;
+		_startX = e.clientX;
+		_startY = e.clientY;
+		_currentX = e.clientX;
+		_currentY = e.clientY;
 	}
 
 	function handleMouseMove(e: MouseEvent) {
-		if (!dragPending && !isDragging) return;
-		dragCurrentX = e.clientX;
-		dragCurrentY = e.clientY;
+		if (!_dragPending && !_isDragging) return;
+		_currentX = e.clientX;
+		_currentY = e.clientY;
 
-		if (dragPending && !isDragging) {
-			const dx = Math.abs(dragCurrentX - dragStartX);
-			const dy = Math.abs(dragCurrentY - dragStartY);
-			if (dx > 5 || dy > 5) {
-				isDragging = true;
-				dragPending = false;
+		if (_dragPending && !_isDragging) {
+			const dx = Math.abs(_currentX - _startX);
+			const dy = Math.abs(_currentY - _startY);
+			// 10px threshold — high enough that natural hand tremor during clicks
+			// won't accidentally trigger drag mode (was 5px, caused click suppression)
+			if (dx > 10 || dy > 10) {
+				_isDragging = true;
+				_dragPending = false;
 			}
+		}
+
+		// Only update reactive state when actually dragging (for rendering the box)
+		if (_isDragging) {
+			selectionBox = {
+				left: Math.min(_startX, _currentX),
+				top: Math.min(_startY, _currentY),
+				width: Math.abs(_currentX - _startX),
+				height: Math.abs(_currentY - _startY),
+			};
 		}
 	}
 
 	function handleMouseUp() {
-		dragPending = false;
-		if (!isDragging) return;
-		isDragging = false;
+		_dragPending = false;
+		if (!_isDragging) return;
+
+		_isDragging = false;
 
 		const selRect = {
-			left: Math.min(dragStartX, dragCurrentX),
-			top: Math.min(dragStartY, dragCurrentY),
-			right: Math.max(dragStartX, dragCurrentX),
-			bottom: Math.max(dragStartY, dragCurrentY),
+			left: Math.min(_startX, _currentX),
+			top: Math.min(_startY, _currentY),
+			right: Math.max(_startX, _currentX),
+			bottom: Math.max(_startY, _currentY),
 		};
+
+		// Clear the visual box
+		selectionBox = null;
 
 		if (!gridRef) return;
 		const tileElements = gridRef.querySelectorAll('[data-path]');
@@ -121,61 +149,81 @@
 		if (nodesInRect.length > 0) {
 			ondragselect(nodesInRect);
 		}
+
+		// Flag to suppress the click that follows this mouseup. Cleared on
+		// the next mousedown, so it can never get stuck for more than one click.
+		_dragJustEnded = true;
 	}
 </script>
 
 <svelte:window
 	onmousemove={handleMouseMove}
 	onmouseup={handleMouseUp}
-	onblur={() => { dragPending = false; isDragging = false; }}
+	onblur={() => { _dragPending = false; _isDragging = false; _dragJustEnded = false; selectionBox = null; }}
 />
 
-{#if nodes.length === 0}
-	<div class="flex items-center justify-center py-12 text-[var(--text-muted)]">
-		No sounds in this directory
-	</div>
-{:else}
-	<div
-		bind:this={gridRef}
-		class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2 {isDragging ? 'no-select' : ''}"
-		onmousedown={handleMouseDown}
-		role="grid"
-		tabindex="0"
-	>
-		{#if showBackTile && onbackclick}
-			<button
-				onclick={onbackclick}
-				class="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] transition-all duration-150 min-h-[80px] cursor-pointer"
-			>
-				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--text-muted)]">
-					<line x1="19" y1="12" x2="5" y2="12"/>
-					<polyline points="12 19 5 12 12 5"/>
-				</svg>
-				<span class="text-xs text-[var(--text-muted)] mt-1">..</span>
-			</button>
-		{/if}
-		{#each nodes as node (node.path)}
-			<Tile
-				{node}
-				isRecorded={isTileRecorded(node)}
-				isSelected={isTileSelected(node)}
-				isPartiallySelected={isTilePartiallySelected(node)}
-				{showPath}
-				onclick={() => ontileclick(node)}
-				oncheckchange={(checked) => ontilecheck(node, checked)}
-			/>
-		{/each}
-	</div>
-{/if}
+<div
+	class="min-h-full p-4"
+	style="user-select: none;"
+	onmousedown={handleMouseDown}
+	role="region"
+>
+	{#if nodes.length === 0 && !showClearSearch}
+		<div class="flex items-center justify-center py-12 text-[var(--text-muted)]">
+			No sounds in this directory
+		</div>
+	{:else}
+		<div
+			bind:this={gridRef}
+			class="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-2"
+		>
+			{#if showClearSearch && onclearsearch}
+				<button
+					onclick={() => { if (!_dragJustEnded) onclearsearch?.(); }}
+					class="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] transition-all duration-150 min-h-[80px] cursor-pointer"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--text-muted)]">
+						<line x1="18" y1="6" x2="6" y2="18"/>
+						<line x1="6" y1="6" x2="18" y2="18"/>
+					</svg>
+					<span class="text-xs text-[var(--text-muted)] mt-1">Clear Search</span>
+				</button>
+			{:else if showBackTile && onbackclick}
+				<button
+					onclick={() => { if (!_dragJustEnded) onbackclick?.(); }}
+					class="flex flex-col items-center justify-center p-3 rounded-lg border-2 border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)] transition-all duration-150 min-h-[80px] cursor-pointer"
+				>
+					<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-[var(--text-muted)]">
+						<line x1="19" y1="12" x2="5" y2="12"/>
+						<polyline points="12 19 5 12 12 5"/>
+					</svg>
+					<span class="text-xs text-[var(--text-muted)] mt-1">Back</span>
+				</button>
+			{/if}
+			{#each nodes as node (node.path)}
+				<Tile
+					{node}
+					isRecorded={isTileRecorded(node)}
+					isSelected={isTileSelected(node)}
+					isPartiallySelected={isTilePartiallySelected(node)}
+					{showPath}
+					soundCount={node.nodeType === 'directory' ? collectFilesFromNode(node).length : undefined}
+					onclick={() => { if (!_dragJustEnded) ontileclick(node); }}
+					oncheckchange={(checked) => ontilecheck(node, checked)}
+				/>
+			{/each}
+		</div>
+	{/if}
+</div>
 
-{#if isDragging}
+{#if selectionBox}
 	<div
 		class="fixed z-50 border-2 border-selected bg-selected/10 pointer-events-none"
 		style="
-			left: {Math.min(dragStartX, dragCurrentX)}px;
-			top: {Math.min(dragStartY, dragCurrentY)}px;
-			width: {Math.abs(dragCurrentX - dragStartX)}px;
-			height: {Math.abs(dragCurrentY - dragStartY)}px;
+			left: {selectionBox.left}px;
+			top: {selectionBox.top}px;
+			width: {selectionBox.width}px;
+			height: {selectionBox.height}px;
 		"
 	></div>
 {/if}

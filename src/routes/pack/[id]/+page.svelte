@@ -82,67 +82,71 @@
 <div class="flex flex-col h-full">
 	<!-- Pack header -->
 	<div class="px-4 py-3 border-b border-[var(--border-color)] bg-[var(--bg-secondary)]">
-		<div class="flex items-center justify-between mb-2">
-			<div class="flex items-center gap-3">
-				<button
-					onclick={() => goto('/')}
-					class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-				>
-					<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-						<line x1="19" y1="12" x2="5" y2="12"/>
-						<polyline points="12 19 5 12 12 5"/>
-					</svg>
-				</button>
-				<div>
-					<h1 class="text-lg font-bold">{packStore.currentPack?.name ?? 'Loading...'}</h1>
-					<p class="text-xs text-[var(--text-muted)]">
-						{recordedCount} / {totalSounds} sounds recorded
-						{#if packStore.currentPack}
-							&middot; {packStore.currentPack.versionId}
-						{/if}
-					</p>
-				</div>
-			</div>
-			<div class="flex items-center gap-2">
-				{#if selectedCount > 0}
-					<span class="text-sm text-[var(--text-secondary)]">
-						{selectedCount} selected
-					</span>
-					<button
-						onclick={() => soundsStore.clearSelection()}
-						class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
-					>
-						Clear
-					</button>
-				{/if}
-				<button
-					onclick={handleRecordSelected}
-					disabled={selectedCount === 0}
-					class="px-4 py-2 rounded-lg bg-recording text-white hover:bg-danger-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
-				>
-					Record Selected ({selectedCount})
-				</button>
-			</div>
-		</div>
-
-		<div class="flex items-center gap-4">
-			{#if !soundsStore.searchQuery}
-				<Breadcrumb
-					crumbs={soundsStore.breadcrumbs}
-					onnavigate={(path) => soundsStore.navigateTo(path)}
-				/>
-			{/if}
-			<div class="flex-1 max-w-xs ml-auto">
+		<div class="flex items-center gap-3">
+			<button
+				onclick={() => goto('/')}
+				class="text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors shrink-0"
+				aria-label="Back to home"
+			>
+				<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+					<line x1="19" y1="12" x2="5" y2="12"/>
+					<polyline points="12 19 5 12 12 5"/>
+				</svg>
+			</button>
+			<button
+				onclick={() => soundsStore.navigateTo([])}
+				class="text-left shrink-0 hover:opacity-80 transition-opacity"
+			>
+				<h1 class="text-lg font-bold leading-tight">{packStore.currentPack?.name ?? 'Loading...'}</h1>
+				<p class="text-xs text-[var(--text-muted)]">
+					{recordedCount} / {totalSounds} sounds recorded
+					{#if packStore.currentPack}
+						&middot; {packStore.currentPack.versionId}
+					{/if}
+				</p>
+			</button>
+			<div class="flex-1 mx-3">
 				<SearchBar
 					value={soundsStore.searchQuery}
 					oninput={(v) => soundsStore.setSearch(v)}
 				/>
 			</div>
+			<div class="flex items-center gap-3 shrink-0">
+				{#if selectedCount > 0}
+					<div class="text-right">
+						<div class="text-sm text-[var(--text-secondary)]">
+							{selectedCount} items selected
+						</div>
+						<button
+							onclick={() => soundsStore.clearSelection()}
+							class="text-xs text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+						>
+							Clear selection
+						</button>
+					</div>
+				{/if}
+				<button
+					onclick={handleRecordSelected}
+					disabled={selectedCount === 0}
+					class="px-4 py-2 rounded-lg bg-cta text-white hover:bg-cta-hover transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium"
+				>
+					Record
+				</button>
+			</div>
 		</div>
+
+		{#if !soundsStore.searchQuery && soundsStore.currentPath.length > 0}
+			<div class="mt-1">
+				<Breadcrumb
+					crumbs={soundsStore.breadcrumbs}
+					onnavigate={(path) => soundsStore.navigateTo(path)}
+				/>
+			</div>
+		{/if}
 	</div>
 
 	<!-- Tile grid -->
-	<div class="flex-1 overflow-auto p-4">
+	<div class="flex-1 overflow-auto">
 		{#if soundsStore.loading}
 			<div class="flex items-center justify-center py-12 text-[var(--text-muted)]">
 				Loading sounds...
@@ -154,10 +158,12 @@
 				selectedPaths={soundsStore.selectedPaths}
 				showPath={!!soundsStore.searchQuery}
 				showBackTile={!soundsStore.searchQuery && soundsStore.currentPath.length > 0}
+				showClearSearch={!!soundsStore.searchQuery}
 				ontileclick={handleTileClick}
 				ontilecheck={handleTileCheck}
 				ondragselect={handleDragSelect}
 				onbackclick={() => soundsStore.navigateTo(soundsStore.currentPath.slice(0, -1))}
+				onclearsearch={() => soundsStore.setSearch('')}
 			/>
 		{/if}
 	</div>

@@ -11,6 +11,8 @@
 	--color-recording: #ef4444;
 	--color-selected: #3b82f6;
 	--color-selected-light: #dbeafe;
+	--color-cta: #2563eb;
+	--color-cta-hover: #1d4ed8;
 }
 
 :root {

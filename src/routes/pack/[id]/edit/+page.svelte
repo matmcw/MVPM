@@ -27,6 +27,9 @@
 	let duplicateName = $state('');
 	let duplicateError = $state('');
 
+	// Icon cache bust
+	let iconKey = $state(Date.now());
+
 	// Delete
 	let showDelete = $state(false);
 	let deleteConfirmText = $state('');
@@ -65,6 +68,7 @@
 		if (result) {
 			try {
 				await packStore.updatePack(packId, undefined, undefined, result as string);
+				iconKey = Date.now();
 			} catch (e) {
 				error = e instanceof Error ? e.message : String(e);
 			}
@@ -186,7 +190,7 @@
 			<div class="flex items-center gap-3">
 				{#if packStore.currentPack?.iconPath}
 					<img
-						src={convertFileSrc(packStore.currentPack.iconPath)}
+						src={convertFileSrc(packStore.currentPack.iconPath) + '?v=' + iconKey}
 						alt="Pack icon"
 						class="w-12 h-12 rounded-lg object-cover border border-[var(--border-color)]"
 					/>

@@ -7,11 +7,12 @@
 		isSelected: boolean;
 		isPartiallySelected?: boolean;
 		showPath?: boolean;
+		soundCount?: number;
 		onclick: () => void;
 		oncheckchange: (checked: boolean) => void;
 	}
 
-	let { node, isRecorded, isSelected, isPartiallySelected, showPath, onclick, oncheckchange }: Props = $props();
+	let { node, isRecorded, isSelected, isPartiallySelected, showPath, soundCount, onclick, oncheckchange }: Props = $props();
 
 	const isDir = $derived(node.nodeType === 'directory');
 
@@ -33,7 +34,7 @@
 				: 'border-[var(--border-color)] bg-[var(--bg-secondary)] hover:border-[var(--border-hover)]'
 			: isRecorded
 				? 'border-success/50 bg-success-light hover:border-success'
-				: 'border-[var(--border-color)] bg-[var(--bg-primary)] hover:border-[var(--border-hover)]'
+				: 'border-[var(--border-color)] bg-[var(--bg-secondary)]/50 hover:border-[var(--border-hover)]'
 		}
 		{isSelected ? 'ring-2 ring-selected/50' : ''}"
 	data-path={node.path}
@@ -44,7 +45,6 @@
 			class="absolute top-1 right-1 z-10"
 			role="presentation"
 			onclick={(e: MouseEvent) => e.stopPropagation()}
-			onmousedown={(e: MouseEvent) => e.stopPropagation()}
 		>
 			<input
 				bind:this={checkboxRef}
@@ -79,6 +79,9 @@
 	<span class="text-xs leading-tight break-all max-w-full {isRecorded ? 'text-success' : 'text-[var(--text-primary)]'}">
 		{node.name}
 	</span>
+	{#if isDir && soundCount !== undefined}
+		<span class="text-[10px] text-[var(--text-muted)] -mt-0.5">({soundCount})</span>
+	{/if}
 	{#if showPath && !isDir}
 		<span class="text-[10px] leading-tight break-all max-w-full text-[var(--text-muted)] mt-0.5">
 			{node.path.replace('minecraft/sounds/', '')}
