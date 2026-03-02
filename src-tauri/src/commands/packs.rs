@@ -28,7 +28,24 @@ fn load_pack_meta(pack_id: &str) -> Result<PackMeta, String> {
 		.map_err(|e| format!("Failed to parse pack metadata: {}", e))?;
 	populate_icon_path(&mut meta);
 	meta.recorded_sounds = scan_recorded_sounds(pack_id);
+	meta.total_sounds = count_version_sounds(&meta.version_id);
 	Ok(meta)
+}
+
+fn count_version_sounds(version_id: &str) -> u32 {
+	let ver_dir = crate::commands::mojang::version_dir(version_id);
+	let ai_path = ver_dir.join("asset_index.json");
+	if let Ok(content) = std::fs::read_to_string(&ai_path) {
+		if let Ok(index) = serde_json::from_str::<serde_json::Value>(&content) {
+			if let Some(objects) = index.get("objects").and_then(|o| o.as_object()) {
+				return objects
+					.keys()
+					.filter(|k| k.starts_with("minecraft/sounds/") && k.ends_with(".ogg"))
+					.count() as u32;
+			}
+		}
+	}
+	0
 }
 
 fn scan_recorded_sounds(pack_id: &str) -> Vec<String> {
@@ -119,6 +136,7 @@ pub async fn list_packs() -> Result<Vec<PackMeta>, String> {
 					if let Ok(mut meta) = serde_json::from_str::<PackMeta>(&content) {
 						populate_icon_path(&mut meta);
 						meta.recorded_sounds = scan_recorded_sounds(&meta.id);
+						meta.total_sounds = count_version_sounds(&meta.version_id);
 						packs.push(meta);
 					}
 				}
@@ -217,12 +235,13 @@ pub async fn create_pack(
 		id: id.clone(),
 		name: trimmed_name,
 		description,
-		version_id,
+		version_id: version_id.clone(),
 		pack_format,
 		has_icon,
 		icon_path: None,
 		recorded_sounds: vec![],
 		created_at: chrono::Utc::now().to_rfc3339(),
+		total_sounds: count_version_sounds(&version_id),
 	};
 
 	let meta_content = serde_json::to_string_pretty(&meta)

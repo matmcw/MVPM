@@ -48,7 +48,23 @@
 		}
 		return standaloneCount + eventCount;
 	});
-	const selectedCount = $derived(soundsStore.selectedPaths.size);
+	const selectedCount = $derived.by(() => {
+		const size = soundsStore.selectedPaths.size;
+		if (!settingsStore.singleRecordingMode || size === 0) return size;
+		const allFiles = soundsStore.flattenAllFiles();
+		const selected = allFiles.filter((f) => soundsStore.selectedPaths.has(f.path));
+		const seenEvents = new Set<string>();
+		let count = 0;
+		for (const f of selected) {
+			if (!f.soundEvent) {
+				count++;
+			} else if (!seenEvents.has(f.soundEvent)) {
+				seenEvents.add(f.soundEvent);
+				count++;
+			}
+		}
+		return count;
+	});
 
 	const displayNodes = $derived.by(() => {
 		const base = soundsStore.searchQuery ? soundsStore.searchResults : soundsStore.currentNodes;

@@ -383,9 +383,9 @@
 		</div>
 
 		<!-- Bottom section -->
-		<div class="border-t border-[var(--border-color)] bg-[var(--bg-secondary)]">
+		<div class="border-t border-[var(--border-color)]">
 			<!-- Folder tab nav island -->
-			<div class="flex justify-center pt-2">
+			<div class="flex justify-center pt-2 pb-1">
 				<div class="flex items-center rounded-t-lg border border-b-0 border-[var(--border-hover)] bg-[var(--bg-secondary)]">
 					<button
 						onclick={handlePrevious}

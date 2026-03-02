@@ -36,7 +36,7 @@
 				{pack.versionId}
 			</span>
 			<span class="text-xs text-[var(--text-muted)]">
-				{recordedCount} sound{recordedCount !== 1 ? 's' : ''} recorded
+				{recordedCount} / {pack.totalSounds} sounds recorded
 			</span>
 		</div>
 	</button>

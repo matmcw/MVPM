@@ -8,7 +8,7 @@ const VERSION_MANIFEST_URL: &str =
 	"https://launchermeta.mojang.com/mc/game/version_manifest.json";
 const RESOURCES_URL: &str = "https://resources.download.minecraft.net";
 
-fn version_dir(version_id: &str) -> PathBuf {
+pub fn version_dir(version_id: &str) -> PathBuf {
 	get_versions_folder().join(version_id)
 }
 

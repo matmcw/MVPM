@@ -182,6 +182,8 @@ pub struct PackMeta {
 	pub icon_path: Option<String>,
 	pub recorded_sounds: Vec<String>,
 	pub created_at: String,
+	#[serde(default)]
+	pub total_sounds: u32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
