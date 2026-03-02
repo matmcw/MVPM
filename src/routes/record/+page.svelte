@@ -171,6 +171,7 @@
 			await packStore.refreshCurrentPack();
 
 			// Auto-advance to next unrecorded (or next sound if all recorded)
+			// Note: the $effect watching currentSound.path handles auto-play
 			if (recordingStore.autoSkip) {
 				const allRecorded = [
 					...(packStore.currentPack?.recordedSounds ?? []),
@@ -179,9 +180,6 @@
 				const found = recordingStore.nextUnrecorded(allRecorded);
 				if (!found) {
 					recordingStore.next();
-				}
-				if (settingsStore.autoPlayOriginal) {
-					setTimeout(playOriginal, 200);
 				}
 			}
 		} catch (e) {
@@ -441,26 +439,24 @@
 			</div>
 
 			<!-- Progress bar -->
-			<div class="overflow-x-auto" bind:this={progressBarRef}>
-				<div class="flex border border-[var(--border-color)] rounded overflow-hidden" style="min-width: fit-content;">
-					{#each recordingStore.sounds as sound, i (sound.path)}
-						<button
-							data-index={i}
-							class="h-8 min-w-[20px] flex-1 relative group transition-all cursor-pointer border-r border-[var(--border-color)] last:border-r-0 hover:brightness-125
-								{i === recordingStore.currentIndex ? 'ring-2 ring-inset ring-white/50' : ''}"
-							style:background-color={
-								i === recordingStore.currentIndex && isRecording ? '#ef4444'
-								: isSoundRecorded(i) ? '#22c55e'
-								: 'var(--bg-tertiary)'
-							}
-							onclick={() => goToSound(i)}
-						>
-							<!-- Tooltip -->
-							<span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[10px] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
-								{displayName(sound.name)} &middot; {displayPath(sound.path)}
-							</span>
-						</button>
-					{/each}
+			<div class="flex justify-center px-4 pb-2">
+				<div class="overflow-x-auto max-w-2xl w-full rounded" bind:this={progressBarRef}>
+					<div class="flex border border-[var(--border-hover)] rounded overflow-hidden" style="min-width: fit-content;">
+						{#each recordingStore.sounds as sound, i (sound.path)}
+							<button
+								data-index={i}
+								class="h-8 min-w-[20px] flex-1 relative group transition-all cursor-pointer hover:brightness-125
+									{i === recordingStore.currentIndex ? 'ring-2 ring-inset ring-white/50' : ''}"
+								style="background-color: {i === recordingStore.currentIndex && isRecording ? '#ef4444' : isSoundRecorded(i) ? '#22c55e' : 'var(--bg-tertiary)'}; {i < recordingStore.sounds.length - 1 ? 'border-right: 1px solid var(--border-hover);' : ''}"
+								onclick={() => goToSound(i)}
+							>
+								<!-- Tooltip -->
+								<span class="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 px-2 py-1 text-[10px] bg-[var(--bg-primary)] border border-[var(--border-color)] rounded shadow-lg whitespace-nowrap opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity z-10">
+									{displayName(sound.name)} &middot; {displayPath(sound.path)}
+								</span>
+							</button>
+						{/each}
+					</div>
 				</div>
 			</div>
 		</div>

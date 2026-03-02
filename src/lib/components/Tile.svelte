@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { SoundNode } from '$lib/utils/api';
+	import { settingsStore } from '$lib/stores/settings.svelte';
 
 	interface Props {
 		node: SoundNode;
@@ -13,6 +14,14 @@
 	}
 
 	let { node, isRecorded, isSelected, isPartiallySelected, showPath, soundCount, onclick, oncheckchange }: Props = $props();
+
+	const displayName = $derived(() => {
+		let name = node.name.replace(/\.ogg$/i, '');
+		if (settingsStore.singleRecordingMode && node.nodeType === 'file') {
+			name = name.replace(/\d+$/, '');
+		}
+		return name;
+	});
 
 	const isDir = $derived(node.nodeType === 'directory');
 
@@ -75,7 +84,7 @@
 	{/if}
 
 	<span class="text-xs leading-tight break-all max-w-full {isRecorded ? 'text-success' : 'text-[var(--text-primary)]'}">
-		{node.name.replace(/\.ogg$/i, '')}
+		{displayName()}
 	</span>
 	{#if isDir && soundCount !== undefined}
 		<span class="text-[10px] text-[var(--text-muted)] -mt-0.5">({soundCount})</span>
